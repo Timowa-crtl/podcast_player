@@ -1,0 +1,15 @@
+{
+  "podcasts": [
+    {
+      "name": "Logbuch Netzpolitik",
+      "rss_url": "https://logbuch-netzpolitik.de/feed/m4a"
+    },
+    {
+      "name": "Fest und Flauschig",
+      "rss_url": "https://feeds.megaphone.fm/GLT4060321204"
+    }
+  ],
+  "episodes_dir": "episodes",
+  "max_episodes_per_podcast": 2,
+  "check_interval_hours": 1
+}
