@@ -29,7 +29,7 @@ PIN_PODCAST_2 = 27  # Physical Pin 13
 def debug_log(message):
     """Print debug message with timestamp if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
-        print(f"[DEBUG {datetime.now().strftime('%H:%M:%S.%f')[:-3]}] {message}")
+        print(f"[DEBUG {datetime.now().strftime('%H:%M:%S.%f')[:-5]}] {message}")
 
 
 class PodcastPlayer:
