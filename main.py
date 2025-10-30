@@ -193,24 +193,17 @@ class PodcastPlayer:
         debug_log(f"Starting MPV with file: {file_path}")
         self.player.play(str(file_path), episode["position"])
         
-        self.state_mgr.set_current_state(podcast_id)
-        debug_log(f"State updated to {podcast_id}")
+        debug_log(f"Now playing {podcast_id}")
     
     def pause(self):
         """Pause playback"""
         if self.player.is_playing():
             self.player.pause()
-            self.state_mgr.set_current_state("paused")
             print("⏸️  Paused")
     
     def handle_state_change(self, new_state: str):
         """Handle state change from switch"""
-        current_state = self.state_mgr.get_current_state()
-        
-        if new_state == current_state:
-            return  # No change
-        
-        print(f"\n🔄 State change: {current_state} → {new_state}")
+        print(f"\n🔄 State change → {new_state}")
         
         if new_state == "paused":
             self.pause()
@@ -238,11 +231,17 @@ class PodcastPlayer:
         # Schedule hourly checks
         schedule.every(self.config["check_interval_hours"]).hours.do(self.check_for_new_episodes)
         
-        # Start in paused state
-        print("\n⏸️  Ready. Use physical switch to control playback.")
-        print("   Press Ctrl+C to quit\n")
+        # Read initial switch position and apply it
+        if GPIO_AVAILABLE:
+            initial_state = self._read_switch_state()
+            print(f"\n🔄 Initial switch position: {initial_state}")
+            self.handle_state_change(initial_state)
+            last_switch_state = initial_state
+        else:
+            print("\n⏸️  Ready. Use physical switch to control playback.")
+            last_switch_state = None
         
-        last_switch_state = None
+        print("   Press Ctrl+C to quit\n")
         
         try:
             while True:

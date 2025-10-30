@@ -16,7 +16,6 @@ class StateManager:
         # Default state
         return {
             "podcasts": {},
-            "current_state": "paused",  # "podcast_1", "podcast_2", or "paused"
             "last_check": 0
         }
     
@@ -32,15 +31,6 @@ class StateManager:
                 "current_index": 0
             }
         return self.state["podcasts"][podcast_id]
-    
-    def set_current_state(self, state: str):
-        """Set current playback state"""
-        self.state["current_state"] = state
-        self.save()
-    
-    def get_current_state(self) -> str:
-        """Get current playback state"""
-        return self.state["current_state"]
     
     def update_position(self, podcast_id: str, episode_index: int, position: float):
         """Update playback position for an episode"""

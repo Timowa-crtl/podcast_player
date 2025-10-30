@@ -1,4 +1,4 @@
-# Raspberry Pi Podcast Player
+# Raspberry Pi Podcast Player v11
 
 Physical switch-controlled podcast player for Raspberry Pi with automatic episode management.
 
@@ -8,6 +8,7 @@ Physical switch-controlled podcast player for Raspberry Pi with automatic episod
 - Checks for new episodes every hour
 - Remembers playback position for each episode
 - Automatic cleanup of old episodes
+- **Switch position is source of truth** - program always starts in current switch position
 
 ## Hardware Setup
 
@@ -73,3 +74,11 @@ The player automatically saves:
 - Last RSS check time
 
 State is stored in `state.json` (automatically created).
+
+**Note:** The physical switch position is always the source of truth. The program does not remember which podcast was last playing - it always starts with whatever position the switch is currently in.
+
+## Changes in v11
+
+- Removed persistent `current_state` from state.json
+- Program now always reads and applies the physical switch position on startup
+- Switch position is the single source of truth for playback state
