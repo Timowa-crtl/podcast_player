@@ -16,7 +16,7 @@ class StateManager:
         # Default state
         return {
             "podcasts": {},
-            "current_state": "paused",  # "podcast_0", "podcast_1", or "paused"
+            "current_state": "paused",  # "podcast_1", "podcast_2", or "paused"
             "last_check": 0
         }
     

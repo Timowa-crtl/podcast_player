@@ -9,27 +9,22 @@ from state_manager import StateManager
 from audio_player import AudioPlayer
 from podcast_manager import PodcastManager
 
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    print("⚠️  RPi.GPIO not available - switch control disabled")
+
 
 # === DEBUG MODE ===
 DEBUG_MODE = True  # Set to False to disable debug output
 
 
-# === KEYBOARD INPUT ===
-# Press keys to control: 1=podcast_0, 2=podcast_1, p=pause
-import sys
-import termios
-import tty
+# === GPIO PIN DEFINITIONS ===
+PIN_PODCAST_1 = 17  # Physical Pin 11
+PIN_PODCAST_2 = 27  # Physical Pin 13
 
-def get_key():
-    """Get a single keypress (non-blocking)"""
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(sys.stdin.fileno())
-        ch = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return ch
 
 def debug_log(message):
     """Print debug message with timestamp if DEBUG_MODE is enabled"""
@@ -54,6 +49,37 @@ class PodcastPlayer:
         # Track current playback
         self.current_podcast_id = None
         self.current_episode_index = None
+        
+        # Setup GPIO
+        if GPIO_AVAILABLE:
+            self._setup_gpio()
+    
+    def _setup_gpio(self):
+        """Initialize GPIO pins for switch"""
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(PIN_PODCAST_1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(PIN_PODCAST_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        debug_log("GPIO initialized (BCM mode)")
+        debug_log(f"  GPIO17 (Pin 11) - Pull-up enabled")
+        debug_log(f"  GPIO27 (Pin 13) - Pull-up enabled")
+    
+    def _read_switch_state(self) -> str:
+        """Read switch position and return state name"""
+        if not GPIO_AVAILABLE:
+            return "paused"
+        
+        pin1 = GPIO.input(PIN_PODCAST_1)  # 1=HIGH, 0=LOW
+        pin2 = GPIO.input(PIN_PODCAST_2)
+        
+        if pin1 == 0 and pin2 == 1:
+            return "podcast_1"
+        elif pin1 == 1 and pin2 == 0:
+            return "podcast_2"
+        elif pin1 == 1 and pin2 == 1:
+            return "paused"
+        else:
+            debug_log(f"⚠️  Invalid switch state: GPIO17={pin1}, GPIO27={pin2}")
+            return "paused"
     
     def _save_position(self, position: float):
         """Callback to save current playback position"""
@@ -69,7 +95,7 @@ class PodcastPlayer:
         print(f"\n🔍 [{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...")
         
         for idx, podcast_config in enumerate(self.config["podcasts"]):
-            podcast_id = f"podcast_{idx}"
+            podcast_id = f"podcast_{idx + 1}"
             print(f"\n📻 {podcast_config['name']}")
             
             # Fetch latest episodes from RSS (only check newest 1)
@@ -178,7 +204,7 @@ class PodcastPlayer:
             print("⏸️  Paused")
     
     def handle_state_change(self, new_state: str):
-        """Handle state change from button press"""
+        """Handle state change from switch"""
         current_state = self.state_mgr.get_current_state()
         
         if new_state == current_state:
@@ -188,12 +214,23 @@ class PodcastPlayer:
         
         if new_state == "paused":
             self.pause()
-        elif new_state in ["podcast_0", "podcast_1"]:
+        elif new_state in ["podcast_1", "podcast_2"]:
             self.switch_to_podcast(new_state)
     
     def run(self):
-        """Main loop"""
+        """Main loop with GPIO switch polling"""
         print("🚀 Podcast Player Starting...")
+        print("=" * 60)
+        
+        if GPIO_AVAILABLE:
+            print("✅ GPIO initialized - switch control enabled")
+            print("   Switch UP     → Podcast 1")
+            print("   Switch CENTER → Paused")
+            print("   Switch DOWN   → Podcast 2")
+        else:
+            print("⚠️  GPIO not available - running in test mode")
+        
+        print("=" * 60)
         
         # Initial episode check
         self.check_for_new_episodes()
@@ -202,41 +239,36 @@ class PodcastPlayer:
         schedule.every(self.config["check_interval_hours"]).hours.do(self.check_for_new_episodes)
         
         # Start in paused state
-        print("\n⏸️  Ready. Press keys to control:")
-        print("   1 = Play Podcast 1")
-        print("   2 = Play Podcast 2")
-        print("   p = Pause")
-        print("   q = Quit\n")
+        print("\n⏸️  Ready. Use physical switch to control playback.")
+        print("   Press Ctrl+C to quit\n")
+        
+        last_switch_state = None
         
         try:
-            import select
-            
             while True:
                 # Check schedule
                 schedule.run_pending()
                 
-                # Check for keyboard input (non-blocking)
-                if select.select([sys.stdin], [], [], 0.1)[0]:
-                    key = get_key()
-                    debug_log(f"Key pressed: {repr(key)}")
+                # Poll switch state
+                if GPIO_AVAILABLE:
+                    switch_state = self._read_switch_state()
                     
-                    if key == '1':
-                        self.handle_state_change("podcast_0")
-                    elif key == '2':
-                        self.handle_state_change("podcast_1")
-                    elif key == 'p':
-                        self.handle_state_change("paused")
-                    elif key == 'q':
-                        print("\n👋 Quitting...")
-                        break
+                    # Only act on state changes
+                    if switch_state != last_switch_state:
+                        debug_log(f"Switch state changed: {last_switch_state} → {switch_state}")
+                        self.handle_state_change(switch_state)
+                        last_switch_state = switch_state
                 
-                time.sleep(0.1)
+                time.sleep(0.2)  # Poll every 200ms
         
         except KeyboardInterrupt:
             print("\n\n👋 Shutting down...")
         finally:
             self.player.cleanup()
             self.state_mgr.save()
+            if GPIO_AVAILABLE:
+                GPIO.cleanup()
+                debug_log("GPIO cleanup done")
 
 
 if __name__ == "__main__":
