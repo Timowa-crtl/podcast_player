@@ -16,7 +16,7 @@ class AudioPlayer:
         Initialize MPV player with IPC control
 
         Args:
-            position_callback: Function to call with current position (every 5 sec)
+            position_callback: Function to call with current position (every X seconds)
         """
         self.position_callback = position_callback
         self.current_file = None
