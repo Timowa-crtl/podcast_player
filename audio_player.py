@@ -55,6 +55,7 @@ class AudioPlayer:
         self.process = subprocess.Popen([
             'mpv',
             '--no-video',
+            '--loop',
             f'--start={start_position}',
             f'--input-ipc-server={self.socket_path}',
             file_path
