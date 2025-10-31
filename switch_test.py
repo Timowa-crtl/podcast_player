@@ -71,7 +71,9 @@ def main():
             # Only print when state changes
             if state != last_state:
                 timestamp = time.strftime("%H:%M:%S")
-                print(f"[{timestamp}] State: {state:20s} (GPIO17={pin1}, GPIO27={pin2})")
+                print(
+                    f"[{timestamp}] State: {state:20s} (GPIO17={pin1}, GPIO27={pin2})"
+                )
 
                 # Visual indicator
                 if state == "PODCAST_1":
@@ -81,7 +83,9 @@ def main():
                 elif state == "PAUSED":
                     print("           ⏸️  → Paused")
                 else:
-                    print("           ⚠️  → Check wiring! Both pins LOW is not expected.")
+                    print(
+                        "           ⚠️  → Check wiring! Both pins LOW is not expected."
+                    )
 
                 print()
                 last_state = state
