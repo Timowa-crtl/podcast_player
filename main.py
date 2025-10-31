@@ -194,10 +194,20 @@ class PodcastPlayer:
 
         debug_log(f"Now playing {podcast_id}")
 
+    def report_current_saved_position(self):
+        """Reports saved position of current podcast from state in seconds."""
+
+        if self.current_podcast_id and self.current_episode_index is not None:
+            podcast_state = self.state_mgr.get_podcast(self.current_podcast_id)
+            episode = podcast_state["episodes"][self.current_episode_index]
+            saved_pos = episode["position"]
+            debug_log(f"Paused at saved position: {saved_pos:.1f}s")
+
     def pause(self):
         """Pause playback"""
         if self.player.is_playing():
             self.player.pause()
+            self.report_current_saved_position()
             print("⏸️  Paused")
 
     def handle_state_change(self, new_state: str):
@@ -266,6 +276,7 @@ class PodcastPlayer:
         except KeyboardInterrupt:
             print("\n\n👋 Shutting down...")
         finally:
+            self.report_current_saved_position()
             self.player.cleanup()
             self.state_mgr.save()
             if GPIO_AVAILABLE:
