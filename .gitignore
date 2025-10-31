@@ -1,6 +1,7 @@
 # Runtime state and data
 state.json
 episodes/
+nohub.out
 
 # Python
 __pycache__/
