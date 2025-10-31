@@ -1,3 +1,5 @@
+from datetime import datetime
+
 DEBUG_MODE = True  # Set to False to disable debug output
 
 def debug_log(message, DEBUG_MODE=True):
