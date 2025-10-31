@@ -84,12 +84,6 @@ class AudioPlayer:
     def pause(self):
         """Pause playback"""
         if self.process and not self._is_paused:
-            self._send_command({"command": ["set_property", "pause", True]})
-            self._is_paused = True
-
-    def pause(self):
-        """Pause playback"""
-        if self.process and not self._is_paused:
             # Save position before pausing
             if self.position_callback and self.current_file:
                 position = self.get_position()

@@ -190,7 +190,9 @@ class PodcastPlayer:
         print(f"🎧 Playing: {episode['title']}")
         print(f"   Position: {episode['position']:.1f}s")
         debug_log(f"Starting MPV with file: {file_path}")
-        self.player.play(str(file_path), episode["position"])
+        offset = 2
+        start_position = max(0, episode["position"] - offset)
+        self.player.play(str(file_path), start_position)
 
         debug_log(f"Now playing {podcast_id}")
 
