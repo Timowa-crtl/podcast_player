@@ -1,5 +1,4 @@
 import requests
-import feedparser
 from pathlib import Path
 from typing import List, Dict, Optional
 import hashlib
