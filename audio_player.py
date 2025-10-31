@@ -125,7 +125,7 @@ class AudioPlayer:
         return self.process is not None and not self._is_paused
 
     def _track_position(self):
-        """Background thread to track and save position every 5 seconds"""
+        """Background thread to track and save position every X seconds"""
         while not self._stop_position_tracking:
             time.sleep(5)
             if self.position_callback and self.current_file and self.process:
