@@ -2,6 +2,7 @@ from datetime import datetime
 
 DEBUG_MODE = True  # Set to False to disable debug output
 
+
 def debug_log(message):
     """Print debug message with timestamp if DEBUG_MODE is enabled"""
     if DEBUG_MODE:
