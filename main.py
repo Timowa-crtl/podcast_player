@@ -261,7 +261,7 @@ class PodcastPlayer:
                         self.handle_state_change(switch_state)
                         last_switch_state = switch_state
 
-                time.sleep(0.2)  # Poll every 200ms
+                time.sleep(0.1)  # Poll GPIO input every X seconds
 
         except KeyboardInterrupt:
             print("\n\n👋 Shutting down...")
