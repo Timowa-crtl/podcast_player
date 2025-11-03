@@ -13,7 +13,7 @@
   "max_episodes_per_podcast": 2,
   "check_interval_hours": 1,
   "debug_mode": true,
-  "position_save_interval": 5,
+  "position_save_interval": 1,
   "download_timeout": 30,
   "rss_timeout": 10
 }
