@@ -35,7 +35,8 @@ class PodcastPlayer:
         # Playback tracking
         self.current_podcast_id: Optional[str] = None
         self.current_episode_index: Optional[int] = None
-        self.last_selected_podcast: Optional[int] = 1  # tracks rotary selection
+        self.current_mode: SwitchState = SwitchState.PAUSED
+        self.current_podcast_index: Optional[int] = None
 
         logger.info("Initialization complete")
 
@@ -94,13 +95,24 @@ class PodcastPlayer:
 
         return updated
 
-    def switch_to_podcast(self, podcast_id: str):
-        logger.info(f"Switching to {podcast_id}")
+    def switch_to_podcast(self, podcast_index: int):
+        """Switch to a specific podcast by index (1-12)."""
+        podcast_id = f"podcast_{podcast_index}"
+        
+        # Check if podcast exists in config
+        if podcast_index < 1 or podcast_index > len(self.config.podcasts):
+            logger.warning(f"Invalid podcast index: {podcast_index}")
+            return
+        
+        podcast_name = self.config.podcasts[podcast_index - 1]['name']
+        logger.info(f"Switching to podcast {podcast_index}: {podcast_name}")
+        
+        # Stop current playback
         self.audio.stop()
 
         podcast_state = self.state.get_podcast(podcast_id)
         if not podcast_state["episodes"]:
-            logger.warning(f"No episodes available for {podcast_id}")
+            logger.warning(f"No episodes available for {podcast_name}")
             return
 
         episode_index = podcast_state.get("current_index", 0)
@@ -115,6 +127,7 @@ class PodcastPlayer:
             return
 
         self.current_podcast_id = podcast_id
+        self.current_podcast_index = podcast_index
         self.current_episode_index = episode_index
 
         position = max(0, episode["position"] - 2)
@@ -130,21 +143,38 @@ class PodcastPlayer:
             self.audio.pause()
             logger.info("Playback paused")
 
-    def handle_switch_change(self, state_tuple: Tuple[SwitchState, Optional[int]]):
-        state, value = state_tuple
-        logger.info(f"Switch changed to: {state.value}, value={value}")
-
-        if state == SwitchState.PAUSED:
-            self.pause()
-        elif state == SwitchState.PLAYING:
-            if self.last_selected_podcast:
-                podcast_id = f"podcast_{self.last_selected_podcast}"
-                self.switch_to_podcast(podcast_id)
-        elif state == SwitchState.MUSIC_MODE:
-            logger.info("Music mode selected (not implemented yet)")
-        elif state == SwitchState.PODCAST_SELECT:
-            self.last_selected_podcast = value
-            logger.debug(f"Selected podcast index: {value}")
+    def handle_switch_change(self, state: SwitchState, podcast_index: Optional[int]):
+        """Handle changes in switch state."""
+        
+        # Check if mode changed
+        mode_changed = state != self.current_mode
+        
+        # Check if podcast selection changed
+        podcast_changed = podcast_index != self.current_podcast_index
+        
+        if mode_changed:
+            logger.info(f"Mode changed to: {state.value}")
+            self.current_mode = state
+            
+            if state == SwitchState.PAUSED:
+                self.pause()
+            elif state == SwitchState.PLAYING:
+                if podcast_index:
+                    self.switch_to_podcast(podcast_index)
+            elif state == SwitchState.MUSIC_MODE:
+                self.pause()
+                logger.info("Music mode selected (not implemented yet)")
+        
+        elif podcast_changed and podcast_index:
+            # Podcast selection changed while in same mode
+            logger.info(f"Podcast selection changed to: {podcast_index}")
+            
+            if state == SwitchState.PLAYING:
+                # If we're playing, switch to the new podcast immediately
+                self.switch_to_podcast(podcast_index)
+            else:
+                # Just remember the selection for when we switch to play mode
+                self.current_podcast_index = podcast_index
 
     def run(self):
         if self.hardware.is_available():
@@ -161,17 +191,21 @@ class PodcastPlayer:
         schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
 
         # Apply initial switch state
-        last_state = self.hardware.read_state()
-        self.handle_switch_change(last_state)
+        last_state, last_podcast = self.hardware.read_state()
+        self.handle_switch_change(last_state, last_podcast)
 
         logger.info("Ready. Press Ctrl+C to quit.\n")
         try:
             while True:
                 schedule.run_pending()
-                current_state = self.hardware.read_state()
-                if current_state != last_state:
-                    self.handle_switch_change(current_state)
+                current_state, current_podcast = self.hardware.read_state()
+                
+                # Check if anything changed
+                if current_state != last_state or current_podcast != last_podcast:
+                    self.handle_switch_change(current_state, current_podcast)
                     last_state = current_state
+                    last_podcast = current_podcast
+                
                 time.sleep(0.1)
         except KeyboardInterrupt:
             raise
