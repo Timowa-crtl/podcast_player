@@ -130,7 +130,6 @@ class StateManager:
             temp_file.replace(self.state_file)
             
             self._last_save_time = time.time()
-            logger.debug("State saved")
             
         except Exception as e:
             logger.error(f"Failed to save state: {e}")
