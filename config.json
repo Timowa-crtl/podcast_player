@@ -2,7 +2,7 @@
   "podcasts": [
     {
       "name": "Logbuch Netzpolitik",
-      "rss_url": "https://logbuch-netzpolitik.de/feed/m4a"
+      "rss_url": "https://logbuch-netzpolitik.de/feed/mp3"
     },
     {
       "name": "Fest und Flauschig",
@@ -18,23 +18,23 @@
     },
     {
       "name": "Deutschland3000",
-      "rss_url": "https://www.ndr.de/n-joy/deutschland3000-ne-gute-stunde-mit-eva-schulz,podcast4504.rss"
+      "rss_url": "https://www.ndr.de/podcast/deutschland3000/podcast4560.xml"
     },
     {
       "name": "Freak Show (Metaebene)",
-      "rss_url": "https://freakshow.fm/feed/mp3"
+      "rss_url": "https://feeds.metaebene.me/freakshow-mp3"
     },
     {
       "name": "Hotel Matze",
-      "rss_url": "https://hotelmatze.podigee.io/feed.xml"
+      "rss_url": "http://hotelmatze.podigee.io/feed/mp3"
     },
     {
       "name": "UKW (Unsere Kleine Welt)",
-      "rss_url": "https://metaebene.me/ukw/feed.xml"
+      "rss_url": "https://feeds.metaebene.me/ukw-mp3"
     },
     {
       "name": "Too Many Tabs (NDR)",
-      "rss_url": "https://www.ndr.de/podcast/too-many-tabs-der-podcast,podcast5522.rss"
+      "rss_url": "https://www.ndr.de/podcast/too-many-tabs-der-podcast/podcast5522.xml"
     },
     {
       "name": "Was bisher geschah",
@@ -42,11 +42,11 @@
     },
     {
       "name": "Der Tag (Deutschlandfunk)",
-      "rss_url": "https://www.deutschlandfunk.de/podcast-der-tag-100.rss"
+      "rss_url": "https://www.deutschlandfunk.de/podcast-104.xml"
     },
     {
       "name": "Radiolab",
-      "rss_url": "https://feeds.wnyc.org/radiolab"
+      "rss_url": "https://feeds.simplecast.com/EmVW7VGp"
     }
   ],
   "episodes_dir": "episodes",
