@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Raspberry Pi Podcast Player - Main Entry Point
-A hardware-controlled podcast player using a 3-position switch.
+A hardware-controlled podcast player.
 """
 
+import signal
 import sys
 import time
-import signal
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from config import Config
 from podcast_player import PodcastPlayer
@@ -29,25 +29,25 @@ def main():
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     # Print welcome banner
     print("=" * 60)
-    print("🎧 Raspberry Pi Podcast Player v13 (mpg123)")
+    print("🎧 Raspberry Pi Podcast Player v14 (mpg123)")
     print("=" * 60)
-    
+
     player = None
-    
+
     try:
         # Load configuration
         config = Config()
-        
+
         # Initialize player
         player = PodcastPlayer(config)
-        
+
         # Start the player
         logger.info("🚀 Starting podcast player...")
         player.run()
-        
+
     except FileNotFoundError as e:
         logger.error(f"Configuration file not found: {e}")
         sys.exit(1)

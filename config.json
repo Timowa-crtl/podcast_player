@@ -7,6 +7,46 @@
     {
       "name": "Fest und Flauschig",
       "rss_url": "https://feeds.megaphone.fm/GLT4060321204"
+    },
+    {
+      "name": "LANZ & PRECHT",
+      "rss_url": "https://cdn.julephosting.de/podcasts/1355-lanz-precht/feed.rss"
+    },
+    {
+      "name": "Betreutes Fühlen",
+      "rss_url": "https://betreutesfuehlen.podigee.io/feed/mp3"
+    },
+    {
+      "name": "Deutschland3000",
+      "rss_url": "https://www.ndr.de/n-joy/deutschland3000-ne-gute-stunde-mit-eva-schulz,podcast4504.rss"
+    },
+    {
+      "name": "Freak Show (Metaebene)",
+      "rss_url": "https://freakshow.fm/feed/mp3"
+    },
+    {
+      "name": "Hotel Matze",
+      "rss_url": "https://hotelmatze.podigee.io/feed.xml"
+    },
+    {
+      "name": "UKW (Unsere Kleine Welt)",
+      "rss_url": "https://metaebene.me/ukw/feed.xml"
+    },
+    {
+      "name": "Too Many Tabs (NDR)",
+      "rss_url": "https://www.ndr.de/podcast/too-many-tabs-der-podcast,podcast5522.rss"
+    },
+    {
+      "name": "Was bisher geschah",
+      "rss_url": "https://wasbishergeschah.podcast.de/feed.rss"
+    },
+    {
+      "name": "Der Tag (Deutschlandfunk)",
+      "rss_url": "https://www.deutschlandfunk.de/podcast-der-tag-100.rss"
+    },
+    {
+      "name": "Radiolab",
+      "rss_url": "https://feeds.wnyc.org/radiolab"
     }
   ],
   "episodes_dir": "episodes",

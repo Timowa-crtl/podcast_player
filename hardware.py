@@ -1,17 +1,21 @@
+#!/usr/bin/env python3
 """
 Hardware control module for GPIO switch input.
-Provides abstraction layer for hardware control with fallback for non-Pi systems.
+Supports 12-position rotary switch for podcast selection and
+3-position mode switch for play/pause/music-mode.
 """
 
+import time
 from enum import Enum
-from typing import Optional
+from typing import Optional, Tuple
+
 from utils import Logger
 
 logger = Logger()
 
-# Try to import RPi.GPIO
 try:
     import RPi.GPIO as GPIO
+
     GPIO_AVAILABLE = True
 except ImportError:
     GPIO_AVAILABLE = False
@@ -19,92 +23,104 @@ except ImportError:
 
 
 class SwitchState(Enum):
-    """Enumeration of possible switch states."""
-    PODCAST_1 = "podcast_1"
-    PODCAST_2 = "podcast_2"
+    PODCAST_SELECT = "podcast_select"
     PAUSED = "paused"
+    PLAYING = "playing"
+    MUSIC_MODE = "music_mode"
+
+
+# GPIO pin definitions (BCM)
+POSITION_PINS = [4, 18, 22, 23, 24, 25, 5, 6, 12, 13, 16, 20]
+PIN_PLAY = 17
+PIN_MUSIC = 27
+
+# Rotary switch debounce
+SAMPLE_MS = 50
+STABLE_READS = 5
+TRANSITION_TIMEOUT_MS = 1000
 
 
 class HardwareController:
-    """
-    Hardware controller for GPIO switch input.
-    Provides safe abstraction with fallback for non-Pi systems.
-    """
-    
-    # GPIO pin definitions (BCM numbering)
-    PIN_PODCAST_1 = 17  # Physical pin 11
-    PIN_PODCAST_2 = 27  # Physical pin 13
-    
     def __init__(self):
-        """Initialize hardware controller."""
         self.gpio_available = GPIO_AVAILABLE
-        
+        self.last_podcast_index = 1
+        self._stable_count = 0
+        self._last_sample = None
+        self._last_confirm = None
+        self._last_confirm_time = 0.0
+
         if self.gpio_available:
             self._setup_gpio()
         else:
             logger.info("Hardware controller running in simulation mode")
-    
+
     def _setup_gpio(self):
-        """Initialize GPIO pins for switch input."""
         try:
-            # Use BCM pin numbering
             GPIO.setmode(GPIO.BCM)
-            
-            # Setup input pins with pull-up resistors
-            GPIO.setup(self.PIN_PODCAST_1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            GPIO.setup(self.PIN_PODCAST_2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            
+            GPIO.setup(PIN_PLAY, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            GPIO.setup(PIN_MUSIC, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            for p in POSITION_PINS:
+                GPIO.setup(p, GPIO.IN, pull_up_down=GPIO.PUD_UP)
             logger.info("GPIO initialized successfully")
-            logger.debug(f"Pin {self.PIN_PODCAST_1} (GPIO17) configured with pull-up")
-            logger.debug(f"Pin {self.PIN_PODCAST_2} (GPIO27) configured with pull-up")
-            
         except Exception as e:
             logger.error(f"Failed to initialize GPIO: {e}")
             self.gpio_available = False
-    
-    def read_state(self) -> SwitchState:
-        """
-        Read current switch state.
-        
-        Returns:
-            Current switch state
-        """
+
+    def _read_rotary_raw(self) -> int:
+        values = [GPIO.input(p) for p in POSITION_PINS]
+        lows = [i for i, v in enumerate(values) if v == GPIO.LOW]
+        if len(lows) == 1:
+            return lows[0] + 1
+        if len(lows) == 0:
+            return 0
+        return -1
+
+    def read_state(self) -> Tuple[SwitchState, Optional[int]]:
         if not self.gpio_available:
-            return SwitchState.PAUSED
-        
+            return (SwitchState.PAUSED, None)
+
         try:
-            # Read pin states (0=LOW/connected to ground, 1=HIGH/pulled up)
-            pin1 = GPIO.input(self.PIN_PODCAST_1)
-            pin2 = GPIO.input(self.PIN_PODCAST_2)
-            
-            # Decode switch position
-            # Switch pulls one pin LOW when in position 1 or 2
-            if pin1 == 0 and pin2 == 1:
-                return SwitchState.PODCAST_1
-            elif pin1 == 1 and pin2 == 0:
-                return SwitchState.PODCAST_2
-            elif pin1 == 1 and pin2 == 1:
-                return SwitchState.PAUSED
+            # 3-position switch first
+            pin_play = GPIO.input(PIN_PLAY)
+            pin_music = GPIO.input(PIN_MUSIC)
+
+            if pin_play == GPIO.LOW and pin_music == GPIO.HIGH:
+                return (SwitchState.PLAYING, self.last_podcast_index)
+            elif pin_play == GPIO.HIGH and pin_music == GPIO.LOW:
+                return (SwitchState.MUSIC_MODE, None)
+            elif pin_play == GPIO.HIGH and pin_music == GPIO.HIGH:
+                return (SwitchState.PAUSED, None)
             else:
-                # Both pins LOW - shouldn't happen with proper switch
-                logger.warning(f"Invalid switch state: GPIO17={pin1}, GPIO27={pin2}")
-                return SwitchState.PAUSED
-                
+                logger.warning("Unexpected mode switch state")
+                return (SwitchState.PAUSED, None)
+
+            # Rotary switch (podcast select)
+            raw = self._read_rotary_raw()
+            now = time.time()
+
+            if raw == self._last_sample:
+                self._stable_count += 1
+            else:
+                self._stable_count = 1
+                self._last_sample = raw
+
+            if self._stable_count >= STABLE_READS and raw > 0:
+                if self._last_confirm != raw or (raw == 0 and now - self._last_confirm_time > TRANSITION_TIMEOUT_MS / 1000):
+                    self._last_confirm = raw
+                    self._last_confirm_time = now
+                    self.last_podcast_index = raw
+                return (SwitchState.PODCAST_SELECT, raw)
+
+            return (SwitchState.PAUSED, None)
+
         except Exception as e:
             logger.error(f"Error reading GPIO: {e}")
-            return SwitchState.PAUSED
-    
+            return (SwitchState.PAUSED, None)
+
     def is_available(self) -> bool:
-        """
-        Check if hardware control is available.
-        
-        Returns:
-            True if GPIO is available and initialized
-        """
         return self.gpio_available
-    
+
     def cleanup(self):
-        """Clean up GPIO resources."""
         if self.gpio_available:
             try:
                 GPIO.cleanup()
@@ -114,46 +130,32 @@ class HardwareController:
 
 
 class SwitchTester:
-    """Utility class for testing switch wiring."""
-    
     @staticmethod
     def run_test():
-        """Run interactive switch test."""
         print("=" * 60)
         print("Switch Wiring Test")
         print("=" * 60)
-        
+
         controller = HardwareController()
-        
+
         if not controller.is_available():
             print("❌ GPIO not available on this system")
             return
-        
+
         print("✅ GPIO initialized")
-        print("\nSwitch wiring:")
-        print("  Pin 1 → RPi Pin 11 (GPIO17)")
-        print("  Pin 2 → RPi Pin 9  (GND)")
-        print("  Pin 3 → RPi Pin 13 (GPIO27)")
+        print("\nRotary switch positions (1–12) → podcast select")
+        print("3-position mode switch → play/pause/music")
         print("\nPress Ctrl+C to exit\n")
-        
+
         last_state = None
-        
+
         try:
             while True:
-                state = controller.read_state()
-                
+                state, value = controller.read_state()
                 if state != last_state:
-                    print(f"Switch position: {state.value}")
-                    
-                    if GPIO_AVAILABLE:
-                        pin1 = GPIO.input(controller.PIN_PODCAST_1)
-                        pin2 = GPIO.input(controller.PIN_PODCAST_2)
-                        print(f"  GPIO17={pin1}, GPIO27={pin2}")
-                    
+                    print(f"Switch state: {state.value}, value={value}")
                     last_state = state
-                
                 time.sleep(0.1)
-                
         except KeyboardInterrupt:
             print("\nTest complete")
         finally:
@@ -161,6 +163,4 @@ class SwitchTester:
 
 
 if __name__ == "__main__":
-    # Run switch test if module is executed directly
-    import time
     SwitchTester.run_test()
