@@ -15,7 +15,6 @@ logger = Logger()
 
 try:
     import RPi.GPIO as GPIO
-
     GPIO_AVAILABLE = True
 except ImportError:
     GPIO_AVAILABLE = False
@@ -67,51 +66,59 @@ class HardwareController:
             self.gpio_available = False
 
     def _read_rotary_raw(self) -> int:
+        """Read raw rotary switch position (1-12, 0=no contact, -1=multiple)."""
         values = [GPIO.input(p) for p in POSITION_PINS]
         lows = [i for i, v in enumerate(values) if v == GPIO.LOW]
+        
         if len(lows) == 1:
-            return lows[0] + 1
+            return lows[0] + 1  # Return 1-12
         if len(lows) == 0:
-            return 0
-        return -1
+            return 0  # No contact (between positions)
+        return -1  # Multiple contacts (error)
 
     def read_state(self) -> Tuple[SwitchState, Optional[int]]:
+        """Read both switches and return current state."""
         if not self.gpio_available:
             return (SwitchState.PAUSED, None)
 
         try:
-            # 3-position switch first
+            # Read 3-position mode switch
             pin_play = GPIO.input(PIN_PLAY)
             pin_music = GPIO.input(PIN_MUSIC)
 
+            # Determine mode
             if pin_play == GPIO.LOW and pin_music == GPIO.HIGH:
-                return (SwitchState.PLAYING, self.last_podcast_index)
+                mode = SwitchState.PLAYING
             elif pin_play == GPIO.HIGH and pin_music == GPIO.LOW:
-                return (SwitchState.MUSIC_MODE, None)
+                mode = SwitchState.MUSIC_MODE
             elif pin_play == GPIO.HIGH and pin_music == GPIO.HIGH:
-                return (SwitchState.PAUSED, None)
+                mode = SwitchState.PAUSED
             else:
-                logger.warning("Unexpected mode switch state")
-                return (SwitchState.PAUSED, None)
+                logger.warning("Unexpected mode switch state (both LOW)")
+                mode = SwitchState.PAUSED
 
-            # Rotary switch (podcast select)
+            # Read rotary switch with debouncing
             raw = self._read_rotary_raw()
             now = time.time()
 
+            # Debounce logic
             if raw == self._last_sample:
                 self._stable_count += 1
             else:
                 self._stable_count = 1
                 self._last_sample = raw
 
+            # Confirm stable reading
             if self._stable_count >= STABLE_READS and raw > 0:
-                if self._last_confirm != raw or (raw == 0 and now - self._last_confirm_time > TRANSITION_TIMEOUT_MS / 1000):
+                # Valid position detected
+                if self._last_confirm != raw or (now - self._last_confirm_time > TRANSITION_TIMEOUT_MS / 1000):
                     self._last_confirm = raw
                     self._last_confirm_time = now
                     self.last_podcast_index = raw
-                return (SwitchState.PODCAST_SELECT, raw)
+                    logger.debug(f"Rotary switch confirmed: position {raw}")
 
-            return (SwitchState.PAUSED, None)
+            # Return current state
+            return (mode, self.last_podcast_index)
 
         except Exception as e:
             logger.error(f"Error reading GPIO: {e}")
@@ -148,16 +155,22 @@ class SwitchTester:
         print("\nPress Ctrl+C to exit\n")
 
         last_state = None
+        last_value = None
 
         try:
             while True:
                 state, value = controller.read_state()
-                if state != last_state:
-                    print(f"Switch state: {state.value}, value={value}")
+                
+                # Show changes
+                if state != last_state or value != last_value:
+                    print(f"Mode: {state.value:15} | Podcast: {value if value else 'N/A'}")
                     last_state = state
+                    last_value = value
+                
                 time.sleep(0.1)
+                
         except KeyboardInterrupt:
-            print("\nTest complete")
+            print("\n\nTest complete")
         finally:
             controller.cleanup()
 
