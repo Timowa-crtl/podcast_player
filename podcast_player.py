@@ -43,7 +43,6 @@ class PodcastPlayer:
     def _save_position(self, position: float):
         if self.current_podcast_id and self.current_episode_index is not None:
             self.state.update_position(self.current_podcast_id, self.current_episode_index, position)
-            logger.debug(f"Saved position: {position:.1f}s")
 
     def check_for_new_episodes(self):
         logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...")
