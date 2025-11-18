@@ -152,10 +152,7 @@ class AudioPlayer:
                 line = self.process.stdout.readline()
                 if not line:
                     break
-                # Optionally log output for debugging
-                if line.startswith("@F"):
-                    # Frame position update from mpg123
-                    logger.debug(f"mpg123 output: {line.strip()}")
+
         except Exception as e:
             logger.error(f"Error reading mpg123 output: {e}")
 
