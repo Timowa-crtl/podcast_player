@@ -33,10 +33,9 @@ POSITION_PINS = [4, 18, 22, 23, 24, 25, 5, 6, 12, 13, 16, 20]
 PIN_PLAY = 17
 PIN_MUSIC = 27
 
-# Rotary switch debounce
-SAMPLE_MS = 50
-STABLE_READS = 5
-TRANSITION_TIMEOUT_MS = 1000
+# Rotary switch debounce (reduced for faster response)
+STABLE_READS = 3  # Reduced from 5
+DEBOUNCE_TIME = 0.2  # Minimum time between position changes
 
 
 class HardwareController:
@@ -108,14 +107,16 @@ class HardwareController:
                 self._stable_count = 1
                 self._last_sample = raw
 
-            # Confirm stable reading
+            # Confirm stable reading with time-based debounce
             if self._stable_count >= STABLE_READS and raw > 0:
-                # Valid position detected
-                if self._last_confirm != raw or (now - self._last_confirm_time > TRANSITION_TIMEOUT_MS / 1000):
+                # Check if enough time passed since last change
+                time_since_last = now - self._last_confirm_time
+                
+                if self._last_confirm != raw and time_since_last >= DEBOUNCE_TIME:
                     self._last_confirm = raw
                     self._last_confirm_time = now
                     self.last_podcast_index = raw
-                    logger.debug(f"Rotary switch confirmed: position {raw}")
+                    logger.debug(f"Rotary position: {raw}")
 
             # Return current state
             return (mode, self.last_podcast_index)
@@ -167,7 +168,7 @@ class SwitchTester:
                     last_state = state
                     last_value = value
                 
-                time.sleep(0.1)
+                time.sleep(0.05)  # Faster polling for test
                 
         except KeyboardInterrupt:
             print("\n\nTest complete")
