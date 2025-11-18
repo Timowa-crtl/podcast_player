@@ -1,6 +1,6 @@
-# Raspberry Pi Podcast Player v12
+# Raspberry Pi Podcast Player v13
 
-A reliable, hardware-controlled podcast player for Raspberry Pi with automatic episode management.
+A reliable, hardware-controlled podcast player for Raspberry Pi with automatic episode management using mpg123.
 
 ## Features
 
@@ -10,6 +10,7 @@ A reliable, hardware-controlled podcast player for Raspberry Pi with automatic e
 ✅ **Smart Cleanup** - Automatically removes old episodes  
 ✅ **Error Recovery** - Robust error handling and logging  
 ✅ **Debug Mode** - Detailed logging for troubleshooting  
+✅ **Lightweight Audio** - Uses mpg123 for minimal resource usage
 
 ## Quick Start
 
@@ -32,16 +33,16 @@ Switch Pin 3 → RPi Pin 13 (GPIO27)
 
 ```bash
 # Clone or download the project
-cd podcast_player_refactored
+cd podcast_player_mpg123
 
 # Install Python dependencies
 pip3 install -r requirements.txt
 
-# Install MPV player
-sudo apt install -y mpv
+# Install mpg123 player
+sudo apt install -y mpg123
 
-# Test the hardware switch
-python3 test_switch.py
+# Test the hardware switch (optional)
+python3 hardware.py
 
 # Run the player
 python3 main.py
@@ -96,9 +97,69 @@ Edit `config.json` to customize:
    - Move switch CENTER to pause
    - Move switch DOWN for Podcast 2
 3. **Stop:** Press Ctrl+C
-- Switch position as source of truth
-- Removed persistent state memory
 
-### Previous versions
-- Basic podcast playback
-- Initial GPIO support
+### Check Status
+
+```bash
+python3 status.py
+```
+
+Shows:
+- Downloaded episodes
+- Current positions
+- Storage usage
+- Last RSS check time
+
+### Test Hardware
+
+```bash
+python3 hardware.py
+```
+
+Interactive tool to verify switch wiring.
+
+## Changes from v12
+
+- **Migrated from MPV to mpg123** for better performance and reliability
+- Simpler audio backend with remote control interface
+- Reduced resource usage
+- More stable position tracking
+
+## Troubleshooting
+
+### mpg123 not found
+```bash
+sudo apt install mpg123
+```
+
+### GPIO permissions
+```bash
+sudo usermod -a -G gpio $USER
+# Log out and log back in
+```
+
+### Audio output
+```bash
+# Test mpg123
+mpg123 test.mp3
+
+# Set default audio device
+sudo raspi-config
+# System Options → Audio
+```
+
+## Files
+
+- `main.py` - Entry point
+- `podcast_player.py` - Main controller
+- `audio_player.py` - **NEW: mpg123 integration**
+- `podcast_manager.py` - RSS and downloads
+- `state_manager.py` - Persistent state
+- `hardware.py` - GPIO control
+- `utils.py` - Helper functions
+- `status.py` - Status display tool
+- `config.json` - Configuration file
+
+## License
+
+MIT License - Feel free to modify and distribute.

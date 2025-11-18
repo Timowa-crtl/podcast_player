@@ -32,7 +32,7 @@ def main():
     
     # Print welcome banner
     print("=" * 60)
-    print("🎧 Raspberry Pi Podcast Player v12")
+    print("🎧 Raspberry Pi Podcast Player v13 (mpg123)")
     print("=" * 60)
     
     player = None
