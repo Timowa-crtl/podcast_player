@@ -109,13 +109,17 @@ class AudioPlayer:
 
             # --- NEW: get duration and clamp resume position ---
             duration = self._get_duration()
-
-            if duration > 0 and start_position >= duration:
-                logger.info(
-                    f"Resume position {start_position:.1f}s >= duration {duration:.1f}s → starting from beginning"
-                )
-                start_position = 0.0
-                self._last_position = 0.0
+            RESUME_END_THRESHOLD_SECONDS = 10
+            
+            if duration > 0:
+                remaining = duration - start_position
+            
+                if remaining <= RESUME_END_THRESHOLD_SECONDS:
+                    logger.info(
+                        f"Only {remaining:.1f}s left in episode → starting from beginning"
+                    )
+                    start_position = 0.0
+                    self._last_position = 0.0
             # ---------------------------------------------------
 
             # Apply final seek target
