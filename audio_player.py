@@ -27,11 +27,13 @@ class AudioPlayer:
             position_callback: Function to call with position updates
             save_interval: Interval in seconds for position updates
         """
+        
+
         self.position_callback = position_callback
         self.save_interval = save_interval
 
         # VLC player
-        self.instance = vlc.Instance()
+        self.instance = vlc.Instance("--aout=alsa")
         self.player: Optional[vlc.MediaPlayer] = None
         self.media: Optional[vlc.Media] = None
 
