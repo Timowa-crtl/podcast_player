@@ -138,8 +138,8 @@ class LEDController:
             time.sleep(interval / 2)
             GPIO.output(pin, False)
             time.sleep(interval / 2)
-        # Return to previous state after warning/error
-        self.set_state(LEDState.OFF)
+        # Turn off LED directly (don't call set_state from within thread)
+        self._set_leds(False, False)
 
     def cleanup(self):
         """Clean up LED resources."""
