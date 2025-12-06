@@ -134,25 +134,43 @@ class LEDController:
         for _ in range(count):
             if self._stop_event.is_set():
                 break
-            GPIO.output(pin, True)
+            try:
+                GPIO.output(pin, True)
+            except:
+                break
             time.sleep(interval / 2)
-            GPIO.output(pin, False)
+            if self._stop_event.is_set():
+                break
+            try:
+                GPIO.output(pin, False)
+            except:
+                break
             time.sleep(interval / 2)
         # Turn off LED directly (don't call set_state from within thread)
-        self._set_leds(False, False)
+        try:
+            self._set_leds(False, False)
+        except:
+            pass  # GPIO may already be cleaned up
 
     def cleanup(self):
         """Clean up LED resources."""
+        # Stop any running threads immediately
         self._stop_event.set()
-        if self._thread:
-            self._thread.join(timeout=1)
+        
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=0.5)
+        
         if GPIO_AVAILABLE:
             try:
+                # Turn off LEDs first
                 self._set_leds(False, False)
+                # Then cleanup GPIO pins
                 GPIO.cleanup([LED_PIN_RED, LED_PIN_GREEN])
                 logger.debug("LED cleanup complete")
             except Exception as e:
-                logger.error(f"Error during LED cleanup: {e}")
+                # Don't log error if GPIO was already cleaned up
+                if "mode" not in str(e).lower():
+                    logger.error(f"Error during LED cleanup: {e}")
 
 
 if __name__ == "__main__":
