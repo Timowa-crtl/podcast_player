@@ -4,7 +4,7 @@ A reliable, minimalistic, hardware-controlled podcast player designed to run on 
 
 ## 1. Hardware Setup
 
-Connect you switches and let's go!
+Connect your switches and let's go!
 
 ## Configuration
 
