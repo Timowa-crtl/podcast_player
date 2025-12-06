@@ -17,6 +17,9 @@ class Logger:
     # ANSI color codes for terminal output
     COLORS = {"DEBUG": "\033[36m", "INFO": "\033[32m", "WARNING": "\033[33m", "ERROR": "\033[31m", "RESET": "\033[0m"}  # Cyan  # Green  # Yellow  # Red  # Reset
 
+    # Class-level LED controller (shared across all logger instances)
+    _led_controller = None
+
     def __init__(self, name: str = "PodcastPlayer", debug: bool = None):
         """
         Initialize logger.
@@ -38,6 +41,11 @@ class Logger:
                     self._debug_enabled = config.get("debug_mode", False)
             except:
                 self._debug_enabled = False
+
+    @classmethod
+    def set_led_controller(cls, led_controller):
+        """Set LED controller for all logger instances."""
+        cls._led_controller = led_controller
 
     def _format_message(self, level: str, message: str) -> str:
         """
@@ -72,10 +80,18 @@ class Logger:
     def warning(self, message: str):
         """Log warning message."""
         print(self._format_message("WARNING", message), file=sys.stderr)
+        # Trigger LED warning
+        if self._led_controller:
+            from led_controller import LEDState
+            self._led_controller.set_state(LEDState.WARNING)
 
     def error(self, message: str):
         """Log error message."""
         print(self._format_message("ERROR", message), file=sys.stderr)
+        # Trigger LED error
+        if self._led_controller:
+            from led_controller import LEDState
+            self._led_controller.set_state(LEDState.ERROR)
 
 
 def safe_cleanup(cleanup_func: Callable, *args, **kwargs) -> bool:
