@@ -28,6 +28,7 @@ class LEDState(Enum):
     DOWNLOADING = "downloading"
     ERROR = "error"
     WARNING = "warning"
+    MUSIC_MODE = "music_mode"  # Added for music mode
 
 
 # GPIO pins (BCM)
@@ -111,6 +112,11 @@ class LEDController:
             self._thread = Thread(target=self._blink_n, args=(LED_PIN_RED, 3, 0.3), daemon=True)
             self._thread.start()
 
+        elif state == LEDState.MUSIC_MODE:
+            # Alternating red/green blink for music mode (fun light show)
+            self._thread = Thread(target=self._alternate_blink, args=(0.3,), daemon=True)
+            self._thread.start()
+
     def _set_leds(self, red: bool, green: bool):
         """Set LED states directly."""
         try:
@@ -151,6 +157,22 @@ class LEDController:
             self._set_leds(False, False)
         except:
             pass  # GPIO may already be cleaned up
+
+    def _alternate_blink(self, interval: float):
+        """Alternate between red and green LEDs (music mode light show)."""
+        while not self._stop_event.is_set():
+            try:
+                self._set_leds(True, False)  # Red on
+            except:
+                break
+            if self._stop_event.wait(interval):
+                break
+            try:
+                self._set_leds(False, True)  # Green on
+            except:
+                break
+            if self._stop_event.wait(interval):
+                break
 
     def cleanup(self):
         """Clean up LED resources."""
@@ -194,6 +216,7 @@ if __name__ == "__main__":
             (LEDState.REFRESHING, 4, "Green blink - Refreshing"),
             (LEDState.WARNING, 3, "Red blink 3x - Warning"),
             (LEDState.ERROR, 4, "Red blink 5x - Error"),
+            (LEDState.MUSIC_MODE, 4, "Alternating - Music Mode"),
             (LEDState.OFF, 1, "All off"),
         ]
 
