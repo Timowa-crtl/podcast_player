@@ -191,8 +191,10 @@ class PodcastPlayer:
                 position = self.audio.get_position()
                 self._save_position(position)
             self.audio.pause()
-            self.led.set_state(LEDState.PAUSED)
             logger.info("Playback paused")
+        
+        # Always set LED to paused state (stops lightshow too)
+        self.led.set_state(LEDState.PAUSED)
 
     def handle_switch_change(self, state: SwitchState, podcast_index: Optional[int]):
         """Handle changes in switch state."""
@@ -215,10 +217,16 @@ class PodcastPlayer:
                     self.switch_to_podcast(podcast_index)
 
             elif state == SwitchState.MUSIC_MODE:
-                self.pause()
+                # Stop any podcast playback first
+                if self.audio.is_playing():
+                    if self.current_podcast_id:
+                        position = self.audio.get_position()
+                        self._save_position(position)
+                    self.audio.pause()
+                
+                # Start lightshow
                 self.led.set_state(LEDState.MUSIC_MODE)
-                logger.info("Music mode selected (not implemented yet)")
-                logger.info("Lightshow active, wohoo!")
+                logger.info("Music mode - Lightshow active!")
 
         elif podcast_changed and podcast_index:
             # Podcast selection changed while in same mode
