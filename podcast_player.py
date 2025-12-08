@@ -218,6 +218,12 @@ class PodcastPlayer:
                 self.pause()
                 logger.info("Music mode selected (not implemented yet)")
 
+            elif state == SwitchState.MUSIC_MODE:
+                self.pause()
+                self.led.set_state(LEDState.MUSIC_MODE)
+                logger.info("Music mode selected (not implemented yet)")
+                logger.info("Lightshow active, wohoo!")
+
         elif podcast_changed and podcast_index:
             # Podcast selection changed while in same mode
             logger.info(f"Podcast selection changed to: {podcast_index}")
