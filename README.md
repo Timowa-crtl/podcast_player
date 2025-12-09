@@ -2,6 +2,15 @@
 
 A reliable, minimalistic, hardware-controlled podcast player designed to run on Raspberry Pi
 
+## 3D-Printed Enclosure
+
+A custom enclosure designed specifically for this project.
+The box includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+.
+The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
+
+Download the STL files here:
+**[https://www.thingiverse.com/thing:7228464](https://www.thingiverse.com/thing:7228464)**
+
 ## 1. Hardware Setup
 
 Connect your switches and let's go!
