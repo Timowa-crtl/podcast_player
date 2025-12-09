@@ -29,18 +29,49 @@ python3 status.py
 python3 hardware.py
 ```
 
-## Files
+### Autostart Service Setup
 
-- `main.py` - Entry point
-- `podcast_player.py` - Main controller
-- `audio_player.py` - Audio player
-- `podcast_manager.py` - RSS and downloads
-- `state_manager.py` - Persistent state
-- `hardware.py` - GPIO control
-- `utils.py` - Helper functions
-- `status.py` - Status display tool
-- `config.json` - Configuration file
+1. Create `/etc/systemd/system/podcast.service` with:
 
-## License
+   ```ini
+   [Unit]
+   Description=Podcast Player
+   After=network.target
 
-MIT License - Feel free to modify and distribute.
+   [Service]
+   ExecStart=/usr/bin/python3 -u /home/user/podcast_player/main.py
+   WorkingDirectory=/home/user/podcast_player
+   User=user
+   Restart=always
+
+   StandardOutput=append:/home/user/podcast_player/podcast.log
+   StandardError=append:/home/user/podcast_player/podcast.log
+
+   [Install]
+   WantedBy=multi-user.target
+
+   ```
+
+2. Reload systemd:
+
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+3. Enable autostart:
+
+   ```bash
+   sudo systemctl enable podcast.service
+   ```
+
+4. Start service:
+
+   ```bash
+   sudo systemctl start podcast.service
+   ```
+
+5. View logs:
+
+   ```bash
+   tail -f ~/podcast_player/podcast.log
+   ```
