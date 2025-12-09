@@ -14,7 +14,7 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
     print("=" * 60)
-    print("🎧 Raspberry Pi Podcast Player v15 (VLC)")
+    print("🎧 Raspberry Pi Podcast Player")
     print("=" * 60)
 
     player = None
