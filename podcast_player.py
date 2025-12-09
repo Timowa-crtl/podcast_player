@@ -1,11 +1,7 @@
-"""
-Main podcast player controller.
-Coordinates hardware switch input, audio playback, and episode management.
-"""
+"""Main podcast player controller coordinating all components."""
 
 import time
 from datetime import datetime
-from typing import Optional
 
 import schedule
 
@@ -15,9 +11,7 @@ from hardware import HardwareController, SwitchState
 from led_controller import LEDController, LEDState
 from podcast_manager import PodcastManager
 from state_manager import StateManager
-from utils import Logger
-
-logger = Logger()
+from utils import log, set_led_controller
 
 
 class PodcastPlayer:
@@ -26,275 +20,196 @@ class PodcastPlayer:
     def __init__(self, config: Config):
         self.config = config
 
-        # Initialize components
-        logger.info("Initializing components...")
-        
-        # Initialize LED controller first
+        log("INFO", "Initializing components...")
         self.led = LEDController()
-        
-        # Connect LED to logger so warnings/errors trigger LEDs
-        Logger.set_led_controller(self.led)
-        
+        set_led_controller(self.led)
+
         self.state = StateManager()
         self.podcast_manager = PodcastManager(config)
         self.audio = AudioPlayer(
             position_callback=self._save_position,
-            save_interval=config.position_save_interval
+            save_interval=config.position_save_interval,
         )
         self.hardware = HardwareController()
 
-        # Playback tracking
-        self.current_podcast_id: Optional[str] = None
-        self.current_episode_index: Optional[int] = None
-        self.current_mode: SwitchState = SwitchState.PAUSED
-        self.current_podcast_index: Optional[int] = None
+        self.current_podcast_id = None
+        self.current_episode_index = None
+        self.current_mode = SwitchState.PAUSED
+        self.current_podcast_index = None
 
-        logger.info("Initialization complete")
+        log("INFO", "Initialization complete")
 
     def _save_position(self, position: float):
-        """Save current playback position."""
-        if self.current_podcast_id and self.current_episode_index is not None:
-            self.state.update_position(
-                self.current_podcast_id,
-                self.current_episode_index,
-                position
-            )
+        if self.current_podcast_id is not None and self.current_episode_index is not None:
+            self.state.update_position(self.current_podcast_id, self.current_episode_index, position)
+
+    def _save_current_position(self):
+        """Save current playback position if audio is active."""
+        if self.current_podcast_id and self.audio.is_active():
+            self._save_position(self.audio.get_position())
 
     def check_for_new_episodes(self):
         """Check RSS feeds for new episodes."""
-        logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...")
+        log("INFO", f"[{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...")
         self.led.set_state(LEDState.REFRESHING)
-        
-        updated_count = 0
 
-        for idx, podcast_config in enumerate(self.config.podcasts):
+        updated = 0
+        for idx, pc in enumerate(self.config.podcasts):
             podcast_id = f"podcast_{idx + 1}"
-            logger.info(f"Checking: {podcast_config['name']}")
-            
-            try:
-                episodes = self.podcast_manager.fetch_episodes(
-                    podcast_config["rss_url"],
-                    count=1
-                )
-                
-                if not episodes:
-                    logger.warning(f"No episodes found for {podcast_config['name']}")
-                    continue
+            log("INFO", f"Checking: {pc['name']}")
 
-                updated = self._update_podcast_episodes(podcast_id, episodes)
-                if updated:
-                    updated_count += 1
-                    
+            try:
+                episodes = self.podcast_manager.fetch_episodes(pc["rss_url"], count=1)
+                if not episodes:
+                    log("WARNING", f"No episodes for {pc['name']}")
+                    continue
+                if self._update_episodes(podcast_id, episodes):
+                    updated += 1
             except Exception as e:
-                logger.error(f"Error checking {podcast_config['name']}: {e}")
+                log("ERROR", f"Error checking {pc['name']}: {e}")
 
         self.state.set_last_check(time.time())
-        logger.info(f"Check complete. Updated {updated_count} podcast(s).")
-        logger.info(f"Next check in {self.config.check_interval_hours} hours")
-        
-        # Return to previous state
-        if self.audio.is_playing():
-            self.led.set_state(LEDState.PLAYING)
-        else:
-            self.led.set_state(LEDState.PAUSED)
+        log("INFO", f"Check complete. Updated {updated} podcast(s).")
+        log("INFO", f"Next check in {self.config.check_interval_hours} hours")
 
-    def _update_podcast_episodes(self, podcast_id: str, episodes: list) -> bool:
-        """Update episodes for a podcast."""
-        podcast_state = self.state.get_podcast(podcast_id)
-        existing_guids = {ep["guid"] for ep in podcast_state["episodes"]}
+        # Restore LED state
+        self.led.set_state(LEDState.PLAYING if self.audio.is_playing() else LEDState.PAUSED)
+
+    def _update_episodes(self, podcast_id: str, episodes: list) -> bool:
+        """Update episodes for a podcast. Returns True if updated."""
+        ps = self.state.get_podcast(podcast_id)
+        existing_guids = {ep["guid"] for ep in ps["episodes"]}
+        new_eps = []
         updated = False
-        new_episodes = []
 
-        for episode in episodes:
-            if episode["guid"] not in existing_guids:
-                logger.info(f"New episode: {episode['title'][:50]}...")
+        for ep in episodes:
+            if ep["guid"] not in existing_guids:
+                log("INFO", f"New: {ep['title'][:50]}...")
                 self.led.set_state(LEDState.DOWNLOADING)
-                
-                filename = self.podcast_manager.download_episode(episode, podcast_id)
-                
+                filename = self.podcast_manager.download_episode(ep, podcast_id)
                 if filename:
-                    new_episodes.append({
-                        "title": episode["title"],
-                        "guid": episode["guid"],
-                        "file": filename,
-                        "position": 0.0
-                    })
+                    new_eps.append({"title": ep["title"], "guid": ep["guid"], "file": filename, "position": 0.0})
                     updated = True
             else:
-                # Keep existing episode
-                for existing in podcast_state["episodes"]:
-                    if existing["guid"] == episode["guid"]:
-                        new_episodes.append(existing)
+                # Keep existing
+                for existing in ps["episodes"]:
+                    if existing["guid"] == ep["guid"]:
+                        new_eps.append(existing)
                         break
 
         if updated:
-            # Keep only max episodes
-            podcast_state["episodes"] = new_episodes[: self.config.max_episodes]
-            
-            # Clean up old files
-            keep_files = [ep["file"] for ep in podcast_state["episodes"]]
-            self.podcast_manager.cleanup_old_episodes(podcast_id, keep_files)
-            
+            ps["episodes"] = new_eps[: self.config.max_episodes]
+            keep = [e["file"] for e in ps["episodes"]]
+            self.podcast_manager.cleanup_old_episodes(podcast_id, keep)
             self.state.save()
 
         return updated
 
     def switch_to_podcast(self, podcast_index: int):
-        """Switch to a specific podcast by index (1-12)."""
-        podcast_id = f"podcast_{podcast_index}"
-
-        # Check if podcast exists in config
+        """Switch to podcast by index (1-12)."""
         if podcast_index < 1 or podcast_index > len(self.config.podcasts):
-            logger.warning(f"Invalid podcast index: {podcast_index}")
+            log("WARNING", f"Invalid podcast: {podcast_index}")
             return
 
-        podcast_name = self.config.podcasts[podcast_index - 1]['name']
-        logger.info(f"Switching to podcast {podcast_index}: {podcast_name}")
+        podcast_id = f"podcast_{podcast_index}"
+        name = self.config.podcasts[podcast_index - 1]["name"]
+        log("INFO", f"Switching to {podcast_index}: {name}")
 
-        # Stop current playback
         self.audio.stop()
+        ps = self.state.get_podcast(podcast_id)
 
-        podcast_state = self.state.get_podcast(podcast_id)
-        if not podcast_state["episodes"]:
-            logger.warning(f"No episodes available for {podcast_name}")
+        if not ps["episodes"]:
+            log("WARNING", f"No episodes for {name}")
             self.led.set_state(LEDState.PAUSED)
             return
 
-        episode_index = podcast_state.get("current_index", 0)
-        if episode_index >= len(podcast_state["episodes"]):
-            episode_index = 0
-            podcast_state["current_index"] = 0
+        ep_idx = min(ps.get("current_index", 0), len(ps["episodes"]) - 1)
+        ep = ps["episodes"][ep_idx]
+        path = self.podcast_manager.get_episode_path(podcast_id, ep["file"])
 
-        episode = podcast_state["episodes"][episode_index]
-        file_path = self.podcast_manager.get_episode_path(podcast_id, episode["file"])
-        
-        if not file_path.exists():
-            logger.error(f"Episode file not found: {file_path}")
+        if not path.exists():
+            log("ERROR", f"File not found: {path}")
             self.led.set_state(LEDState.PAUSED)
             return
 
         self.current_podcast_id = podcast_id
         self.current_podcast_index = podcast_index
-        self.current_episode_index = episode_index
+        self.current_episode_index = ep_idx
 
-        position = max(0, episode["position"] - 2)
-        logger.info(f"Playing: {episode['title'][:50]}...")
-        logger.info(f"Position: {position:.1f}s")
-        
-        self.audio.play(str(file_path), position)
+        pos = max(0, ep["position"] - 2)
+        log("INFO", f"Playing: {ep['title'][:50]}... at {pos:.1f}s")
+        self.audio.play(str(path), pos)
         self.led.set_state(LEDState.PLAYING)
 
     def pause(self):
         """Pause playback."""
         if self.audio.is_playing():
-            if self.current_podcast_id:
-                position = self.audio.get_position()
-                self._save_position(position)
+            self._save_current_position()
             self.audio.pause()
-            logger.info("Playback paused")
-        
-        # Always set LED to paused state (stops lightshow too)
+            log("INFO", "Paused")
         self.led.set_state(LEDState.PAUSED)
 
-    def handle_switch_change(self, state: SwitchState, podcast_index: Optional[int]):
-        """Handle changes in switch state."""
-
-        # Check if mode changed
+    def handle_switch_change(self, state: SwitchState, podcast_index):
+        """Handle mode or podcast selection change."""
         mode_changed = state != self.current_mode
-
-        # Check if podcast selection changed
         podcast_changed = podcast_index != self.current_podcast_index
 
         if mode_changed:
-            logger.info(f"Mode changed to: {state.value}")
+            log("INFO", f"Mode: {state.value}")
             self.current_mode = state
 
             if state == SwitchState.PAUSED:
                 self.pause()
-
-            elif state == SwitchState.PLAYING:
-                if podcast_index:
-                    self.switch_to_podcast(podcast_index)
-
+            elif state == SwitchState.PLAYING and podcast_index:
+                self.switch_to_podcast(podcast_index)
             elif state == SwitchState.MUSIC_MODE:
-                # Stop any podcast playback first
-                if self.audio.is_playing():
-                    if self.current_podcast_id:
-                        position = self.audio.get_position()
-                        self._save_position(position)
-                    self.audio.pause()
-                
-                # Start lightshow
+                self._save_current_position()
+                self.audio.stop()
                 self.led.set_state(LEDState.MUSIC_MODE)
-                logger.info("Music mode - Lightshow active!")
+                log("INFO", "Music mode - Lightshow!")
 
         elif podcast_changed and podcast_index:
-            # Podcast selection changed while in same mode
-            logger.info(f"Podcast selection changed to: {podcast_index}")
-
+            log("INFO", f"Podcast selection: {podcast_index}")
             if state == SwitchState.PLAYING:
-                # If we're playing, switch to the new podcast immediately
                 self.switch_to_podcast(podcast_index)
             else:
-                # Just remember the selection for when we switch to play mode
                 self.current_podcast_index = podcast_index
 
     def run(self):
-        """Main run loop."""
+        """Main event loop."""
         if self.hardware.is_available():
-            logger.info("✅ Hardware control enabled")
-            print("Rotary switch → Podcast select 1–12")
-            print("3-position mode → Play / Pause / Music")
+            log("INFO", "✅ Hardware enabled")
+            print("Rotary → Podcast 1-12 | Mode → Play/Pause/Music")
         else:
-            logger.warning("⚠️  Running in software-only mode (no GPIO)")
-
+            log("WARNING", "⚠️ Software-only mode (no GPIO)")
         print("=" * 60)
 
-        # Startup LED test
         self.led.startup_test()
-
-        # Initial episode check
         self.check_for_new_episodes()
-        schedule.every(self.config.check_interval_hours).hours.do(
-            self.check_for_new_episodes
-        )
+        schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
 
-        # Apply initial switch state
         last_state, last_podcast = self.hardware.read_state()
         self.handle_switch_change(last_state, last_podcast)
 
-        logger.info("Ready. Press Ctrl+C to quit.\n")
-        
+        log("INFO", "Ready. Ctrl+C to quit.\n")
+
         try:
             while True:
                 schedule.run_pending()
-                current_state, current_podcast = self.hardware.read_state()
-
-                # Check if anything changed
-                if current_state != last_state or current_podcast != last_podcast:
-                    self.handle_switch_change(current_state, current_podcast)
-                    last_state = current_state
-                    last_podcast = current_podcast
-
+                state, podcast = self.hardware.read_state()
+                if state != last_state or podcast != last_podcast:
+                    self.handle_switch_change(state, podcast)
+                    last_state, last_podcast = state, podcast
                 time.sleep(0.1)
-                
         except KeyboardInterrupt:
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error in main loop: {e}")
             raise
 
     def cleanup(self):
         """Clean up all resources."""
-        logger.info("Cleaning up resources...")
-        
-        if self.current_podcast_id:
-            position = self.audio.get_position()
-            self._save_position(position)
-            
+        log("INFO", "Cleaning up...")
+        self._save_current_position()
         self.audio.cleanup()
         self.hardware.cleanup()
         self.led.cleanup()
         self.state.save()
-        
-        logger.info("Cleanup complete")
+        log("INFO", "Cleanup complete")

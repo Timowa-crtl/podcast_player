@@ -1,66 +1,39 @@
 #!/usr/bin/env python3
-"""
-Raspberry Pi Podcast Player - Main Entry Point
-A hardware-controlled podcast player.
-"""
+"""Raspberry Pi Podcast Player - Main Entry Point."""
 
 import signal
 import sys
-import time
-from datetime import datetime
-from pathlib import Path
 
 from config import Config
 from podcast_player import PodcastPlayer
-from utils import Logger, safe_cleanup
-
-# Initialize logger
-logger = Logger()
-
-
-def signal_handler(signum, frame):
-    """Handle shutdown signals gracefully."""
-    logger.info("\n👋 Shutdown signal received...")
-    sys.exit(0)
+from utils import log, safe_cleanup
 
 
 def main():
-    """Main entry point for the podcast player."""
-    # Register signal handlers
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
-    # Print welcome banner
     print("=" * 60)
-    print("🎧 Raspberry Pi Podcast Player v14 (mpg123)")
+    print("🎧 Raspberry Pi Podcast Player v15 (VLC)")
     print("=" * 60)
 
     player = None
-
     try:
-        # Load configuration
-        config = Config()
-
-        # Initialize player
-        player = PodcastPlayer(config)
-
-        # Start the player
-        logger.info("🚀 Starting podcast player...")
+        player = PodcastPlayer(Config())
+        log("INFO", "🚀 Starting...")
         player.run()
-
     except FileNotFoundError as e:
-        logger.error(f"Configuration file not found: {e}")
+        log("ERROR", f"Config not found: {e}")
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\n👋 Shutting down...")
+        log("INFO", "👋 Shutting down...")
     except Exception as e:
-        logger.error(f"Fatal error: {e}")
+        log("ERROR", f"Fatal: {e}")
         sys.exit(1)
     finally:
-        # Clean up resources
         if player:
             safe_cleanup(player.cleanup)
-        logger.info("Shutdown complete.")
+        log("INFO", "Shutdown complete.")
 
 
 if __name__ == "__main__":
