@@ -9,7 +9,7 @@ import vlc
 
 from utils import log
 
-RESUME_END_THRESHOLD = 10  # seconds from end to restart from beginning
+RESUME_END_THRESHOLD = 0.1  # seconds from end to restart from beginning
 
 
 class AudioPlayer:
@@ -60,7 +60,7 @@ class AudioPlayer:
 
             # Attach end-of-media event
             events = self.player.event_manager()
-            events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_media_end)
+            events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_media_end)  # type: ignore
 
             self.player.play()
             time.sleep(0.1)

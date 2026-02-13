@@ -116,13 +116,15 @@ class MusicManager:
                 folder = entry.get("folder", "")
                 name = entry.get("name", folder)
                 path = music_dir / folder
-                result.append({
-                    "position": i + 1,
-                    "folder": folder,
-                    "name": name,
-                    "path": str(path),
-                    "exists": path.is_dir(),
-                })
+                result.append(
+                    {
+                        "position": i + 1,
+                        "folder": folder,
+                        "name": name,
+                        "path": str(path),
+                        "exists": path.is_dir(),
+                    }
+                )
         else:
             if music_dir.is_dir():
                 folders = sorted(
@@ -131,12 +133,14 @@ class MusicManager:
                 )
                 for i, folder in enumerate(folders[:12]):
                     path = music_dir / folder
-                    result.append({
-                        "position": i + 1,
-                        "folder": folder,
-                        "name": folder,
-                        "path": str(path),
-                        "exists": True,
-                    })
+                    result.append(
+                        {
+                            "position": i + 1,
+                            "folder": folder,
+                            "name": folder,
+                            "path": str(path),
+                            "exists": True,
+                        }
+                    )
 
         return result
