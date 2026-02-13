@@ -49,7 +49,7 @@
       "rss_url": "https://feeds.simplecast.com/EmVW7VGp"
     }
   ],
-  "music_dir": "/home/tweckerle/music",
+  "music_dir": "~/music",
   "albums": [
     { "folder": "Radiohead - (1997) OK Computer", "name": "OK Computer" },
     { "folder": "Gorillaz - Demon Days", "name": "Demon Days" },
