@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from config import Config
+from music_manager import MusicManager
 from podcast_manager import PodcastManager
 from state_manager import StateManager
 from utils import format_duration, format_file_size
@@ -19,6 +20,7 @@ def main():
         config = Config()
         state = StateManager()
         manager = PodcastManager(config)
+        music = MusicManager()
 
         # Config
         print(f"\n📋 Config: {config.episodes_dir}, max {config.max_episodes}/podcast, check every {config.check_interval_hours}h")
@@ -30,10 +32,13 @@ def main():
 
         # Stats
         stats = state.get_statistics()
-        print(f"\n📈 Stats: {stats['total_episodes']} episodes, {stats['total_time_hours']:.1f}h listened, last check: {stats['last_check']}")
+        print(f"\n📈 Stats: {stats['total_episodes']} episodes, "
+              f"{stats['total_podcast_time_hours']:.1f}h podcast / "
+              f"{stats['total_music_time_hours']:.1f}h music, "
+              f"last check: {stats['last_check']}")
 
-        # Episodes
-        print("\n📚 Episodes:")
+        # Podcast Episodes
+        print("\n📚 Podcast Episodes:")
         for i, pc in enumerate(config.podcasts):
             podcast_id = f"podcast_{i + 1}"
             ps = state.get_podcast(podcast_id)
@@ -49,6 +54,41 @@ def main():
                 path = manager.get_episode_path(podcast_id, ep["file"])
                 size = format_file_size(path.stat().st_size) if path.exists() else "missing"
                 print(f"      {marker} {j+1}. {ep['title'][:40]} | {format_duration(ep.get('position', 0))} | {size}")
+
+        # Music Albums
+        albums = music.get_all_albums_info()
+        album_source = "configured" if config.albums else "auto-discovered"
+        print(f"\n🎵 Music Albums ({len(albums)} {album_source}, base: {config.music_dir}):")
+
+        if not albums:
+            print("   (none)")
+        else:
+            for album in albums:
+                pos = album["position"]
+                name = album["name"]
+                music_id = f"music_{pos}"
+                ms = state.get_music(music_id)
+
+                if not album["exists"]:
+                    print(f"   {pos:2}. {name} [MISSING]")
+                    continue
+
+                if not ms:
+                    print(f"   {pos:2}. {name} (not started)")
+                    continue
+
+                if ms.get("completed"):
+                    print(f"   {pos:2}. {name} ✅ Completed")
+                    continue
+
+                tracks = ms.get("tracks", [])
+                track_idx = ms.get("current_track", 0)
+                position = ms.get("position", 0.0)
+                total = len(tracks)
+                current_file = tracks[track_idx] if track_idx < total else "?"
+
+                print(f"   {pos:2}. {name}")
+                print(f"       ▶️ Track {track_idx + 1}/{total} | {format_duration(position)} | {current_file}")
 
         # Storage
         info = manager.get_storage_info()

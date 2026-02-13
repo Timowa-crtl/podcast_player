@@ -1,6 +1,5 @@
 """LED status indicators with patterns for different states."""
 
-import random
 import time
 from enum import Enum
 from threading import Thread, Event
@@ -80,7 +79,8 @@ class LEDController:
 
         self._stop_thread()
 
-        if state == LEDState.PLAYING:
+        if state in (LEDState.PLAYING, LEDState.MUSIC_MODE):
+            # Green solid for both podcast and music playback
             self._set(False, True)
         elif state in (LEDState.PAUSED, LEDState.OFF):
             self._set(False, False)
@@ -92,9 +92,6 @@ class LEDController:
             self._thread.start()
         elif state == LEDState.WARNING:
             self._thread = Thread(target=self._blink_n, args=(LED_RED, 3, 0.3), daemon=True)
-            self._thread.start()
-        elif state == LEDState.MUSIC_MODE:
-            self._thread = Thread(target=self._lightshow, daemon=True)
             self._thread.start()
 
     def _blink(self, pin: int, interval: float):
@@ -134,53 +131,6 @@ class LEDController:
                 break
         self._set(False, False)
 
-    def _lightshow(self):
-        """Music mode lightshow."""
-        if not self._initialized:
-            return
-        patterns = [
-            [(True, False), (False, True)],  # alternate
-            [(True, True), (False, False), (True, False), (False, True)],  # chase
-        ]
-        while not self._stop.is_set():
-            # Alternate pattern
-            for _ in range(10):
-                if self._stop.is_set():
-                    break
-                for r, g in patterns[0]:
-                    self._set(r, g)
-                    if self._stop.wait(0.15):
-                        break
-            # Chase pattern
-            for _ in range(10):
-                if self._stop.is_set():
-                    break
-                for r, g in patterns[1]:
-                    self._set(r, g)
-                    if self._stop.wait(0.1):
-                        break
-            # Random
-            for _ in range(20):
-                if self._stop.is_set():
-                    break
-                self._set(random.choice([True, False]), random.choice([True, False]))
-                if self._stop.wait(0.08):
-                    break
-            # Pulse
-            for _ in range(3):
-                if self._stop.is_set():
-                    break
-                for _ in range(3):
-                    self._set(True, True)
-                    if self._stop.wait(0.05):
-                        break
-                    self._set(False, False)
-                    if self._stop.wait(0.05):
-                        break
-                self._stop.wait(0.2)
-
-        self._set(False, False)
-
     def cleanup(self):
         self._stop.set()
         if self._thread and self._thread.is_alive():
@@ -202,12 +152,12 @@ if __name__ == "__main__":
         exit(1)
 
     tests = [
-        (LEDState.PLAYING, 2, "Green solid"),
+        (LEDState.PLAYING, 2, "Green solid (podcast)"),
+        (LEDState.MUSIC_MODE, 2, "Green solid (music)"),
         (LEDState.PAUSED, 2, "Off"),
         (LEDState.REFRESHING, 4, "Green blink"),
         (LEDState.WARNING, 3, "Red 3x"),
         (LEDState.ERROR, 4, "Red 5x"),
-        (LEDState.MUSIC_MODE, 8, "Lightshow"),
     ]
     try:
         led.startup_test()

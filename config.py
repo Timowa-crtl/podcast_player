@@ -11,6 +11,8 @@ DEFAULTS = {
     "position_save_interval": 5,
     "download_timeout": 30,
     "rss_timeout": 10,
+    "music_dir": str(Path.home() / "music"),
+    "albums": [],
 }
 
 
@@ -35,6 +37,14 @@ class Config:
         for i, p in enumerate(self._data["podcasts"], 1):
             if "name" not in p or "rss_url" not in p:
                 raise ValueError(f"Podcast {i} missing 'name' or 'rss_url'")
+
+        # Validate albums (optional)
+        albums = self._data.get("albums", [])
+        if len(albums) > 12:
+            raise ValueError("Maximum 12 albums supported")
+        for i, a in enumerate(albums, 1):
+            if "folder" not in a:
+                raise ValueError(f"Album {i} missing 'folder'")
 
     @property
     def podcasts(self):
@@ -67,3 +77,11 @@ class Config:
     @property
     def rss_timeout(self):
         return self._data["rss_timeout"]
+
+    @property
+    def music_dir(self):
+        return self._data["music_dir"]
+
+    @property
+    def albums(self):
+        return self._data["albums"]

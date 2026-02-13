@@ -27,6 +27,7 @@ class AudioPlayer:
 
         self._stop_tracking = threading.Event()
         self._track_thread: Optional[threading.Thread] = None
+        self._end_reached = threading.Event()
 
     def _get_duration(self, timeout=2.0) -> float:
         """Get media duration, waiting briefly for VLC to parse."""
@@ -51,10 +52,16 @@ class AudioPlayer:
         self.current_file = file_path
         self._last_position = start_position
         self._is_paused = False
+        self._end_reached.clear()
 
         try:
             self.player = self.instance.media_player_new()
             self.player.set_media(self.instance.media_new(file_path))
+
+            # Attach end-of-media event
+            events = self.player.event_manager()
+            events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_media_end)
+
             self.player.play()
             time.sleep(0.1)
 
@@ -78,6 +85,17 @@ class AudioPlayer:
             log("ERROR", f"Playback failed: {e}")
             self.stop()
 
+    def _on_media_end(self, event):
+        """Called by VLC when media reaches end. Runs in VLC thread."""
+        self._end_reached.set()
+
+    def has_ended(self) -> bool:
+        """Check if current media reached end. Clears the flag."""
+        if self._end_reached.is_set():
+            self._end_reached.clear()
+            return True
+        return False
+
     def pause(self):
         """Pause playback."""
         if self.player and not self._is_paused:
@@ -95,6 +113,7 @@ class AudioPlayer:
     def stop(self):
         """Stop playback and tracking thread."""
         self._stop_tracking.set()
+        self._end_reached.clear()
         if self._track_thread:
             self._track_thread.join(timeout=1)
             self._track_thread = None

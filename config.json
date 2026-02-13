@@ -49,6 +49,21 @@
       "rss_url": "https://feeds.simplecast.com/EmVW7VGp"
     }
   ],
+  "music_dir": "/home/tweckerle/music",
+  "albums": [
+    { "folder": "Radiohead - (1997) OK Computer", "name": "OK Computer" },
+    { "folder": "Gorillaz - Demon Days", "name": "Demon Days" },
+    { "folder": "Linkin Park - Meteora", "name": "Meteora" },
+    { "folder": "Peter Fox - Stadtaffe", "name": "Stadtaffe" },
+    { "folder": "MTV Unplugged In New York", "name": "Nirvana Unplugged" },
+    { "folder": "K.I.Z. - Sexismus Gegen Rechts" },
+    { "folder": "Muse - The Resistance 2009", "name": "The Resistance" },
+    { "folder": "Kraftklub - Mit K.-2012", "name": "Mit K" },
+    { "folder": "Foo Fighters - Echoes, Silence, Patience & Grace", "name": "Echoes, Silence..." },
+    { "folder": "Metallica - Death Magnetic", "name": "Death Magnetic" },
+    { "folder": "MGMT - Oracular Spectacular [2008]", "name": "Oracular Spectacular" },
+    { "folder": "Deichkind - Aufstand Im Schlaraffenland 2006", "name": "Aufstand Im Schlaraffenland" }
+  ],
   "episodes_dir": "episodes",
   "max_episodes_per_podcast": 2,
   "check_interval_hours": 1,
