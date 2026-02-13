@@ -17,6 +17,7 @@ def _get_debug_mode():
     if _debug_mode is None:
         try:
             import json
+
             with open("config.json", "r") as f:
                 _debug_mode = json.load(f).get("debug_mode", False)
         except:
@@ -38,17 +39,18 @@ def log(level: str, message: str):
     timestamp = datetime.now().strftime("%H:%M:%S")
     colors = {"DEBUG": "\033[36m", "INFO": "\033[32m", "WARNING": "\033[33m", "ERROR": "\033[31m"}
     reset = "\033[0m"
-    
+
     if sys.stdout.isatty():
         out = f"[{timestamp}] {colors.get(level, '')}{level:8}{reset} {message}"
     else:
         out = f"[{timestamp}] {level:8} {message}"
-    
+
     print(out, file=sys.stderr if level in ("WARNING", "ERROR") else sys.stdout)
-    
+
     # Trigger LED on warning/error
     if _led_controller and level in ("WARNING", "ERROR"):
         from led_controller import LEDState
+
         state = LEDState.ERROR if level == "ERROR" else LEDState.WARNING
         _led_controller.set_state(state)
 
@@ -70,9 +72,12 @@ def format_duration(seconds: float) -> str:
     h, rem = divmod(int(seconds), 3600)
     m, s = divmod(rem, 60)
     parts = []
-    if h: parts.append(f"{h}h")
-    if m: parts.append(f"{m}m")
-    if s or not parts: parts.append(f"{s}s")
+    if h:
+        parts.append(f"{h}h")
+    if m:
+        parts.append(f"{m}m")
+    if s or not parts:
+        parts.append(f"{s}s")
     return " ".join(parts)
 
 

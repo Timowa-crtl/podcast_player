@@ -2,12 +2,13 @@
 
 import time
 from enum import Enum
-from threading import Thread, Event
+from threading import Event, Thread
 
 from utils import log
 
 try:
     import RPi.GPIO as GPIO
+
     GPIO_AVAILABLE = True
 except ImportError:
     GPIO_AVAILABLE = False

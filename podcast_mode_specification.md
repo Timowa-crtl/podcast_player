@@ -62,6 +62,7 @@ The Raspberry Pi Podcast Player supports up to 12 podcast feeds mapped to the 12
 ### Episode extraction
 
 From each feed item, extract:
+
 - **Title**: from `<title>` element. Whitespace-collapsed, truncated to 100 chars
 - **Audio URL**: from `<enclosure url="...">` (RSS) or `<link rel="enclosure" href="...">` (Atom)
 - **GUID**: from `<guid>` or `<id>`. Falls back to audio URL if missing
@@ -181,10 +182,10 @@ Stored in `state.json` under the `podcasts` namespace.
 
 ### 3-position mode switch
 
-| Position | Behavior |
-|----------|----------|
-| Play     | Play podcast at current knob position |
-| Center   | Paused (both modes) |
+| Position | Behavior                                     |
+| -------- | -------------------------------------------- |
+| Play     | Play podcast at current knob position        |
+| Center   | Paused (both modes)                          |
 | Music    | Play music (see music_mode_specification.md) |
 
 ### 12-position rotary knob
@@ -194,14 +195,14 @@ Stored in `state.json` under the `podcasts` namespace.
 
 ### LED behavior
 
-| State | LEDs |
-|-------|------|
-| Playing | Green solid |
-| Paused | Off |
-| Checking RSS | Green blink |
-| Downloading | Green blink |
-| Warning | Red 3× blink |
-| Error | Red 5× blink |
+| State        | LEDs         |
+| ------------ | ------------ |
+| Playing      | Green solid  |
+| Paused       | Off          |
+| Checking RSS | Green blink  |
+| Downloading  | Green blink  |
+| Warning      | Red 3× blink |
+| Error        | Red 5× blink |
 
 ---
 
@@ -245,16 +246,16 @@ Markers: `▶️` = current episode, `✅` = completed, blank = not yet played.
 
 ## File Summary
 
-| File | Role |
-|------|------|
-| `config.py` | Loads and validates `config.json` |
-| `config.json` | Podcast list, directories, timeouts |
-| `podcast_manager.py` | RSS fetching, episode downloading, cleanup |
-| `audio_player.py` | VLC playback with position tracking |
-| `state_manager.py` | Persistent JSON state for positions and metadata |
-| `podcast_player.py` | Main controller: ties hardware → podcast/music → audio |
-| `hardware.py` | GPIO rotary switch and mode switch reading |
-| `led_controller.py` | Red/green LED patterns for status feedback |
-| `status.py` | CLI status display tool |
-| `main.py` | Entry point, signal handling, startup/shutdown |
-| `utils.py` | Logging, formatting helpers |
+| File                 | Role                                                   |
+| -------------------- | ------------------------------------------------------ |
+| `config.py`          | Loads and validates `config.json`                      |
+| `config.json`        | Podcast list, directories, timeouts                    |
+| `podcast_manager.py` | RSS fetching, episode downloading, cleanup             |
+| `audio_player.py`    | VLC playback with position tracking                    |
+| `state_manager.py`   | Persistent JSON state for positions and metadata       |
+| `podcast_player.py`  | Main controller: ties hardware → podcast/music → audio |
+| `hardware.py`        | GPIO rotary switch and mode switch reading             |
+| `led_controller.py`  | Red/green LED patterns for status feedback             |
+| `status.py`          | CLI status display tool                                |
+| `main.py`            | Entry point, signal handling, startup/shutdown         |
+| `utils.py`           | Logging, formatting helpers                            |

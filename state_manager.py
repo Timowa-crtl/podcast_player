@@ -86,8 +86,7 @@ class StateManager:
         """Get music state for an album position. Returns dict or empty."""
         return self.state["music"].get(music_id, {})
 
-    def save_music(self, music_id: str, folder: str, tracks: list,
-                   current_track: int, position: float, completed: bool = False):
+    def save_music(self, music_id: str, folder: str, tracks: list, current_track: int, position: float, completed: bool = False):
         """Save full music state for an album position."""
         existing = self.state["music"].get(music_id, {})
         total_time = existing.get("total_time", 0)

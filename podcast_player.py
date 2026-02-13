@@ -68,9 +68,7 @@ class PodcastPlayer:
 
     def _save_music_position(self, position: float):
         if self.current_music_id is not None and self.current_music_track_index is not None:
-            self.state.update_music_position(
-                self.current_music_id, self.current_music_track_index, position
-            )
+            self.state.update_music_position(self.current_music_id, self.current_music_track_index, position)
 
     def _save_current_position(self):
         """Save current playback position if audio is active."""
@@ -248,9 +246,7 @@ class PodcastPlayer:
         self.current_episode_index = None
 
         # Save initial state
-        self.state.save_music(
-            music_id, album["folder"], tracks, track_idx, position, completed=False
-        )
+        self.state.save_music(music_id, album["folder"], tracks, track_idx, position, completed=False)
 
         # Play the track
         self._play_music_track(track_idx, position)

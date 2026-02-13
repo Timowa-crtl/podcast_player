@@ -32,10 +32,12 @@ def main():
 
         # Stats
         stats = state.get_statistics()
-        print(f"\n📈 Stats: {stats['total_episodes']} episodes, "
-              f"{stats['total_podcast_time_hours']:.1f}h podcast / "
-              f"{stats['total_music_time_hours']:.1f}h music, "
-              f"last check: {stats['last_check']}")
+        print(
+            f"\n📈 Stats: {stats['total_episodes']} episodes, "
+            f"{stats['total_podcast_time_hours']:.1f}h podcast / "
+            f"{stats['total_music_time_hours']:.1f}h music, "
+            f"last check: {stats['last_check']}"
+        )
 
         # Podcast Episodes
         print("\n📚 Podcast Episodes:")
@@ -97,6 +99,7 @@ def main():
         # Disk space
         try:
             import shutil
+
             st = shutil.disk_usage(config.episodes_dir)
             print(f"💿 Disk: {st.free / 1e9:.1f} GB free / {st.total / 1e9:.1f} GB ({st.used / st.total * 100:.0f}% used)")
         except:
