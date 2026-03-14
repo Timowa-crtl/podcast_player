@@ -49,19 +49,19 @@ HEIGHT = 122
 # --- Layout constants (pixels) --------------------------------------------
 
 MARGIN = 6
-STATUS_Y = 4          # top of status line
-NAME_Y = 24           # top of name line
-TITLE_Y = 48          # top of first title line
-TITLE_LINE2_Y = 62    # top of second title line
-BAR_Y = 82            # top of progress bar
+STATUS_Y = 4  # top of status line
+NAME_Y = 24  # top of name line
+TITLE_Y = 48  # top of first title line
+TITLE_LINE2_Y = 62  # top of second title line
+BAR_Y = 82  # top of progress bar
 BAR_HEIGHT = 5
 BAR_WIDTH = WIDTH - 2 * MARGIN
 
-ICON_SIZE = 24         # mode icon dimensions (square)
+ICON_SIZE = 24  # mode icon dimensions (square)
 ICON_X = WIDTH - MARGIN - ICON_SIZE
 ICON_Y = 2
 
-PLAY_ICON_SIZE = 14    # play/pause triangle/bars size
+PLAY_ICON_SIZE = 14  # play/pause triangle/bars size
 PLAY_ICON_X = MARGIN
 PLAY_ICON_Y = NAME_Y
 
@@ -291,9 +291,7 @@ class EinkDisplay:
         )
         if checked:
             # Draw checkmark as two lines
-            draw.line(
-                [(x + 2, y + 5), (x + 4, y + CHECK_SIZE - 2)], fill=0, width=1
-            )
+            draw.line([(x + 2, y + 5), (x + 4, y + CHECK_SIZE - 2)], fill=0, width=1)
             draw.line(
                 [(x + 4, y + CHECK_SIZE - 2), (x + CHECK_SIZE - 2, y + 2)],
                 fill=0,
@@ -506,12 +504,15 @@ def _demo():
     print("E-Ink Display Demo")
     print("=" * 40)
 
+    SHOW_DURATION_S = 20
     display = EinkDisplay()
     if not display.available:
         print("No e-ink display detected. Demo requires hardware.")
         return
 
-    print(f"Cycling {len(DEMO_SCREENS)} screens (3s each). Ctrl+C to stop.\n")
+    print(
+        f"Cycling {len(DEMO_SCREENS)} screens ({SHOW_DURATION_S}s each). Ctrl+C to stop.\n"
+    )
 
     try:
         display.clear()
@@ -521,7 +522,7 @@ def _demo():
             for screen in DEMO_SCREENS:
                 print(f"  {screen['label']}")
                 display.show(**screen["args"])
-                time.sleep(3)
+                time.sleep(SHOW_DURATION_S)
 
             # Show blank between cycles
             print("  Blank")
