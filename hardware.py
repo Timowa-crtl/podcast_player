@@ -23,8 +23,8 @@ class SwitchState(Enum):
 
 
 # GPIO pins (BCM)
-POSITION_PINS = [4, 18, 22, 23, 24, 25, 5, 6, 12, 13, 16, 20]
-PIN_PLAY = 17
+POSITION_PINS = [4, 18, 22, 23, 9, 21, 5, 6, 12, 13, 16, 20]
+PIN_PLAY = 7
 PIN_MUSIC = 27
 
 # Debounce settings
