@@ -7,12 +7,19 @@ import schedule
 
 from audio_player import AudioPlayer
 from config import Config
+from eink_display import EinkDisplay
 from hardware import HardwareController, SwitchState
 from led_controller import LEDController, LEDState
 from music_manager import MusicManager
 from podcast_manager import PodcastManager
 from state_manager import StateManager
 from utils import log, set_led_controller
+
+# How often to refresh the e-ink progress bar during playback (seconds)
+DISPLAY_UPDATE_INTERVAL = 30
+
+# How long to wait after play() before trying to read duration from VLC (seconds)
+DURATION_CAPTURE_DELAY = 1.5
 
 
 class PodcastPlayer:
@@ -33,6 +40,7 @@ class PodcastPlayer:
             save_interval=config.position_save_interval,
         )
         self.hardware = HardwareController()
+        self.display = EinkDisplay()
 
         # Podcast state
         self.current_podcast_id = None
@@ -48,10 +56,234 @@ class PodcastPlayer:
         self.current_mode = SwitchState.PAUSED
         self.current_podcast_index = None
 
+        # Display timing
+        self._last_display_update = 0.0
+        self._duration_captured = False
+        self._playback_start_time = 0.0
+
         log("INFO", "Initialization complete")
 
     def _is_music_mode(self) -> bool:
         return self.current_mode == SwitchState.MUSIC_MODE
+
+    # --- Display helpers ---
+
+    def _update_display(self):
+        """Redraw the e-ink display with current state."""
+        if not self.display.available:
+            return
+
+        try:
+            if self._is_music_mode():
+                self._update_display_music()
+            elif self.current_mode == SwitchState.PLAYING:
+                self._update_display_podcast()
+            elif self.current_mode == SwitchState.PAUSED:
+                # Show whichever mode was last active, or blank
+                if self.current_music_id is not None:
+                    self._update_display_music()
+                elif self.current_podcast_id is not None:
+                    self._update_display_podcast()
+                # else: nothing has played yet, leave display as-is
+        except Exception as e:
+            log("ERROR", f"Display update failed: {e}")
+
+        self._last_display_update = time.time()
+
+    def _update_display_podcast(self):
+        """Draw podcast info on the e-ink display."""
+        if self.current_podcast_id is None or self.current_episode_index is None:
+            return
+
+        # Get podcast name from config
+        idx = int(self.current_podcast_id.split("_")[1]) - 1
+        if idx < 0 or idx >= len(self.config.podcasts):
+            return
+        name = self.config.podcasts[idx]["name"]
+
+        # Get episode info from state
+        ps = self.state.get_podcast(self.current_podcast_id)
+        if not ps["episodes"] or self.current_episode_index >= len(ps["episodes"]):
+            self.display.show(
+                name=name,
+                title="Error - no episode found",
+                progress=0.0,
+                knob_position=idx + 1,
+                is_playing=False,
+                is_completed=False,
+                icon="podcast",
+            )
+            return
+
+        ep = ps["episodes"][self.current_episode_index]
+        title = ep.get("title", "Unknown")
+        position = ep.get("position", 0.0)
+        duration = ep.get("duration", 0.0)
+        is_completed = ep.get("completed", False)
+
+        # Use live position if audio is active
+        if self.audio.is_active():
+            position = self.audio.get_position()
+
+        progress = position / duration if duration > 0 else 0.0
+
+        self.display.show(
+            name=name,
+            title=title,
+            progress=progress,
+            knob_position=idx + 1,
+            is_playing=self.audio.is_playing(),
+            is_completed=is_completed,
+            icon="podcast",
+        )
+
+    def _update_display_music(self):
+        """Draw music info on the e-ink display."""
+        if self.current_music_id is None:
+            return
+
+        knob_pos = int(self.current_music_id.split("_")[1])
+        ms = self.state.get_music(self.current_music_id)
+
+        # Get album display name
+        album = self.music_manager.get_album_for_position(knob_pos)
+        name = album["name"] if album else f"Album {knob_pos}"
+
+        # Get track info
+        tracks = ms.get("tracks", [])
+        track_idx = ms.get("current_track", 0)
+        position = ms.get("position", 0.0)
+        duration = ms.get("current_track_duration", 0.0)
+        is_completed = ms.get("completed", False)
+
+        if tracks and track_idx < len(tracks):
+            title = tracks[track_idx]
+        else:
+            title = ""
+
+        # Use live position if audio is active
+        if self.audio.is_active():
+            position = self.audio.get_position()
+
+        progress = position / duration if duration > 0 else 0.0
+
+        self.display.show(
+            name=name,
+            title=title,
+            progress=progress,
+            knob_position=knob_pos,
+            is_playing=self.audio.is_playing(),
+            is_completed=is_completed,
+            icon="music",
+        )
+
+    def _update_display_preview(self, knob_position: int):
+        """Show a preview of what's at this knob position (while paused)."""
+        if not self.display.available:
+            return
+
+        if self.current_mode == SwitchState.PAUSED:
+            # Guess which mode to preview: if music was last active, preview music
+            if self.current_music_id is not None:
+                self._preview_album(knob_position)
+            else:
+                self._preview_podcast(knob_position)
+
+    def _preview_podcast(self, knob_position: int):
+        """Show podcast preview while paused."""
+        idx = knob_position - 1
+        if idx < 0 or idx >= len(self.config.podcasts):
+            return
+
+        name = self.config.podcasts[idx]["name"]
+        podcast_id = f"podcast_{knob_position}"
+        ps = self.state.get_podcast(podcast_id)
+
+        if not ps["episodes"]:
+            self.display.show(
+                name=name, title="No episodes", progress=0.0,
+                knob_position=knob_position, is_playing=False,
+                is_completed=False, icon="podcast",
+            )
+            return
+
+        ep_idx = min(ps.get("current_index", 0), len(ps["episodes"]) - 1)
+        ep = ps["episodes"][ep_idx]
+        position = ep.get("position", 0.0)
+        duration = ep.get("duration", 0.0)
+        progress = position / duration if duration > 0 else 0.0
+
+        self.display.show(
+            name=name, title=ep.get("title", "Unknown"), progress=progress,
+            knob_position=knob_position, is_playing=False,
+            is_completed=ep.get("completed", False), icon="podcast",
+        )
+
+    def _preview_album(self, knob_position: int):
+        """Show album preview while paused."""
+        album = self.music_manager.get_album_for_position(knob_position)
+        if not album:
+            return
+
+        music_id = f"music_{knob_position}"
+        ms = self.state.get_music(music_id)
+        name = album["name"]
+
+        if not ms:
+            self.display.show(
+                name=name, title="Not started", progress=0.0,
+                knob_position=knob_position, is_playing=False,
+                is_completed=False, icon="music",
+            )
+            return
+
+        tracks = ms.get("tracks", [])
+        track_idx = ms.get("current_track", 0)
+        title = tracks[track_idx] if track_idx < len(tracks) else ""
+        position = ms.get("position", 0.0)
+        duration = ms.get("current_track_duration", 0.0)
+        progress = position / duration if duration > 0 else 0.0
+
+        self.display.show(
+            name=name, title=title, progress=progress,
+            knob_position=knob_position, is_playing=False,
+            is_completed=ms.get("completed", False), icon="music",
+        )
+
+    def _try_capture_duration(self):
+        """Try to read duration from VLC and store it. Called from main loop."""
+        if self._duration_captured:
+            return
+        if not self.audio.is_active():
+            return
+        # Wait a bit after playback starts for VLC to parse the file
+        if time.time() - self._playback_start_time < DURATION_CAPTURE_DELAY:
+            return
+
+        duration = self.audio.get_duration()
+        if duration <= 0:
+            return
+
+        self._duration_captured = True
+
+        if self._is_music_mode():
+            if self.current_music_id:
+                self.state.update_music_track_duration(self.current_music_id, duration)
+                log("DEBUG", f"Captured music track duration: {duration:.1f}s")
+        else:
+            if self.current_podcast_id is not None and self.current_episode_index is not None:
+                self.state.update_episode_duration(
+                    self.current_podcast_id, self.current_episode_index, duration
+                )
+                log("DEBUG", f"Captured episode duration: {duration:.1f}s")
+
+        # Redraw display now that we have duration for the progress bar
+        self._update_display()
+
+    def _mark_playback_started(self):
+        """Reset duration capture state when a new file starts playing."""
+        self._duration_captured = False
+        self._playback_start_time = time.time()
 
     # --- Position saving ---
 
@@ -106,10 +338,10 @@ class PodcastPlayer:
         log("INFO", f"Next check in {self.config.check_interval_hours} hours")
 
         # Restore LED state
-        if self.current_mode == SwitchState.MUSIC_MODE:
-            self.led.set_state(LEDState.PLAYING if self.audio.is_playing() else LEDState.PAUSED)
+        if self.audio.is_playing():
+            self.led.set_state(LEDState.PLAYING)
         else:
-            self.led.set_state(LEDState.PLAYING if self.audio.is_playing() else LEDState.PAUSED)
+            self.led.set_state(LEDState.PAUSED)
 
     def _update_episodes(self, podcast_id: str, episodes: list) -> bool:
         """Update episodes for a podcast. Returns True if updated."""
@@ -124,7 +356,7 @@ class PodcastPlayer:
                 self.led.set_state(LEDState.DOWNLOADING)
                 filename = self.podcast_manager.download_episode(ep, podcast_id)
                 if filename:
-                    new_eps.append({"title": ep["title"], "guid": ep["guid"], "file": filename, "position": 0.0})
+                    new_eps.append({"title": ep["title"], "guid": ep["guid"], "file": filename, "position": 0.0, "duration": 0.0})
                     updated = True
             else:
                 for existing in ps["episodes"]:
@@ -156,6 +388,13 @@ class PodcastPlayer:
         if not ps["episodes"]:
             log("WARNING", f"No episodes for {name}")
             self.led.set_state(LEDState.PAUSED)
+
+            # Show "no episode" on display
+            self.current_podcast_id = podcast_id
+            self.current_podcast_index = podcast_index
+            self.current_episode_index = 0
+            self.current_music_id = None
+            self._update_display()
             return
 
         ep_idx = min(ps.get("current_index", 0), len(ps["episodes"]) - 1)
@@ -180,7 +419,9 @@ class PodcastPlayer:
         pos = max(0, ep["position"] - 2)
         log("INFO", f"Playing: {ep['title'][:50]}... at {pos:.1f}s")
         self.audio.play(str(path), pos)
+        self._mark_playback_started()
         self.led.set_state(LEDState.PLAYING)
+        self._update_display()
 
     # --- Music mode ---
 
@@ -271,7 +512,9 @@ class PodcastPlayer:
 
         pos = max(0, position - 2) if position > 0 else 0.0
         self.audio.play(str(track_path), pos)
+        self._mark_playback_started()
         self.led.set_state(LEDState.PLAYING)
+        self._update_display()
 
     def _advance_music_track(self):
         """Advance to next track, or mark album completed."""
@@ -286,6 +529,7 @@ class PodcastPlayer:
             self.state.mark_music_completed(self.current_music_id)
             self.audio.stop()
             self.led.set_state(LEDState.PAUSED)
+            self._update_display()
             return
 
         # Save state for next track
@@ -314,6 +558,7 @@ class PodcastPlayer:
             self.audio.pause()
             log("INFO", "Paused")
         self.led.set_state(LEDState.PAUSED)
+        self._update_display()
 
     def handle_switch_change(self, state: SwitchState, podcast_index):
         """Handle mode or podcast/album selection change."""
@@ -352,7 +597,9 @@ class PodcastPlayer:
                 self.switch_to_podcast(podcast_index)
             elif state == SwitchState.MUSIC_MODE:
                 self.switch_to_album(podcast_index)
-            # If PAUSED, just remember the position for later
+            elif state == SwitchState.PAUSED:
+                # Show preview of the selected position on the display
+                self._update_display_preview(podcast_index)
 
     def run(self):
         """Main event loop."""
@@ -364,6 +611,10 @@ class PodcastPlayer:
         print("=" * 60)
 
         self.led.startup_test()
+
+        # Clear display on startup (full refresh)
+        self.display.clear()
+
         self.check_for_new_episodes()
         schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
 
@@ -379,6 +630,13 @@ class PodcastPlayer:
                 # Check for end-of-track in music mode
                 if self._is_music_mode() and self.audio.has_ended():
                     self._on_track_ended()
+
+                # Try to capture duration after playback starts
+                self._try_capture_duration()
+
+                # Periodic display update for progress bar
+                if self.audio.is_playing() and time.time() - self._last_display_update > DISPLAY_UPDATE_INTERVAL:
+                    self._update_display()
 
                 state, podcast = self.hardware.read_state()
                 if state != last_state or podcast != last_podcast:
@@ -396,5 +654,6 @@ class PodcastPlayer:
         self.audio.cleanup()
         self.hardware.cleanup()
         self.led.cleanup()
+        self.display.cleanup()
         self.state.save()
         log("INFO", "Cleanup complete")

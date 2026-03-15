@@ -29,7 +29,7 @@ class AudioPlayer:
         self._track_thread: Optional[threading.Thread] = None
         self._end_reached = threading.Event()
 
-    def _get_duration(self, timeout=2.0) -> float:
+    def _get_duration_internal(self, timeout=2.0) -> float:
         """Get media duration, waiting briefly for VLC to parse."""
         if not self.player:
             return 0.0
@@ -39,6 +39,15 @@ class AudioPlayer:
             if dur > 0:
                 return dur / 1000.0
             time.sleep(0.05)
+        return 0.0
+
+    def get_duration(self) -> float:
+        """Get duration of current media in seconds. Returns 0.0 if unknown."""
+        if not self.player:
+            return 0.0
+        dur = self.player.get_length()
+        if dur > 0:
+            return dur / 1000.0
         return 0.0
 
     def play(self, file_path: str, start_position: float = 0.0):
@@ -66,7 +75,7 @@ class AudioPlayer:
             time.sleep(0.1)
 
             # Check if near end, restart if so
-            duration = self._get_duration()
+            duration = self._get_duration_internal()
             if duration > 0 and (duration - start_position) <= RESUME_END_THRESHOLD:
                 log("INFO", f"Near end ({duration - start_position:.1f}s left) → starting from beginning")
                 start_position = 0.0

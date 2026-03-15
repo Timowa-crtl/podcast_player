@@ -285,11 +285,14 @@ class EinkDisplay:
     # --- Drawing primitives ------------------------------------------------
 
     def _draw_dot_circle(self, draw, cx, cy, radius, active_position):
-        """Draw 12 dots in a circle. Position 1 at 7 o'clock, clockwise to 12 at 6 o'clock."""
+        """Draw 12 dots in a circle. Position 1 at 7 o'clock, clockwise to 12 at 6 o'clock.
+
+        Screen coordinates: Y increases downward, so positive sin() goes down.
+        7 o'clock = 2π/3 radians from 3 o'clock (measured clockwise on screen).
+        Each step adds 2π/12 (30°) clockwise.
+        """
         for i in range(1, 13):
-            # Start at 7 o'clock (210°) and go clockwise in 30° steps
-            # 7 o'clock = 210° = 7π/6 radians
-            angle = (7.0 / 6.0) * math.pi + (i - 1) * (2.0 * math.pi / 12.0)
+            angle = (2.0 * math.pi / 3.0) + (i - 1) * (2.0 * math.pi / 12.0)
             dx = cx + math.cos(angle) * radius
             dy = cy + math.sin(angle) * radius
 

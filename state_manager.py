@@ -63,6 +63,20 @@ class StateManager:
             podcast["total_time"] = podcast.get("total_time", 0) + 1
             self.save()
 
+    def update_episode_duration(self, podcast_id: str, episode_index: int, duration: float):
+        """Store the duration (seconds) of a podcast episode once known."""
+        podcast = self.get_podcast(podcast_id)
+        if 0 <= episode_index < len(podcast["episodes"]):
+            podcast["episodes"][episode_index]["duration"] = duration
+            self.save()
+
+    def get_episode_duration(self, podcast_id: str, episode_index: int) -> float:
+        """Get stored duration for a podcast episode. Returns 0.0 if unknown."""
+        podcast = self.get_podcast(podcast_id)
+        if 0 <= episode_index < len(podcast["episodes"]):
+            return podcast["episodes"][episode_index].get("duration", 0.0)
+        return 0.0
+
     def set_last_check(self, timestamp: float):
         """Update last RSS check timestamp."""
         self.state["last_check"] = timestamp
@@ -90,6 +104,8 @@ class StateManager:
         """Save full music state for an album position."""
         existing = self.state["music"].get(music_id, {})
         total_time = existing.get("total_time", 0)
+        # Preserve track duration if already stored
+        track_duration = existing.get("current_track_duration", 0.0)
 
         self.state["music"][music_id] = {
             "folder": folder,
@@ -98,6 +114,7 @@ class StateManager:
             "position": position,
             "completed": completed,
             "total_time": total_time,
+            "current_track_duration": track_duration,
             "last_played": datetime.now().isoformat(),
         }
         self.save()
@@ -111,6 +128,20 @@ class StateManager:
             ms["total_time"] = ms.get("total_time", 0) + 1
             ms["last_played"] = datetime.now().isoformat()
             self.save()
+
+    def update_music_track_duration(self, music_id: str, duration: float):
+        """Store the duration of the current music track once known."""
+        ms = self.state["music"].get(music_id)
+        if ms:
+            ms["current_track_duration"] = duration
+            self.save()
+
+    def get_music_track_duration(self, music_id: str) -> float:
+        """Get stored duration for current music track. Returns 0.0 if unknown."""
+        ms = self.state["music"].get(music_id)
+        if ms:
+            return ms.get("current_track_duration", 0.0)
+        return 0.0
 
     def mark_music_completed(self, music_id: str):
         """Mark album as completed."""
