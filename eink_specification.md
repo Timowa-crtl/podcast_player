@@ -12,13 +12,6 @@ Add a Waveshare 2.13" V4 e-ink display (250×122 pixels, 1-bit black/white) to s
 - **Resolution**: 250×122 pixels, landscape orientation
 - **Colors**: 1-bit (black and white only)
 - **Interface**: SPI
-- **Refresh**: partial refresh (~0.3s) for all updates
-
-### Refresh strategy
-
-- **Partial refresh for everything.**
-- **One full refresh on startup** to clear ghosting from previous session.
-- **Periodic full refresh** every ~50 partial refreshes to reduce ghosting buildup.
 
 ---
 
@@ -27,73 +20,121 @@ Add a Waveshare 2.13" V4 e-ink display (250×122 pixels, 1-bit black/white) to s
 There is **one layout** used for both playing and paused states, in both podcast and music modes. The only difference between playing and paused is the icon (▶ vs ⏸).
 
 ```
-┌──────────────────────────────┐
-│ ☐ Knob: 3/12          [IMG] │  <- checkbox + knob position + mode icon
-│ ▶ LANZ & PRECHT             │  <- play/pause icon + name (bold)
-│                              │
-│ Ausgabe 421: Über die        │  <- title/filename, up to 2 lines
-│ Zukunft der Arbe...          │
-│                              │
-│ ████████████░░░░░░░░░░░░░░░ │  <- progress bar
-└──────────────────────────────┘
+┌──────────────────────────────────────────┐
+│                                  · · ·   │
+│                                ·       · │
+│                                ·  icon · │
+│                                ·       · │
+│                                  · ● ·   │
+│                                          │
+│ ▶ LANZ & PRECHT ☐                       │
+│                                          │
+│ Ausgabe 421: Über die Zukunft            │
+│ der Arbeit in Deuts...                   │
+│                                          │
+│ ████████████████░░░░░░░░░░░░░░░░░░░░░░░ │
+└──────────────────────────────────────────┘
 ```
 
 ### Elements top to bottom
 
-1. **Status line**: checkbox + `Knob: N/12` + mode icon (top-right)
-2. **Name line**: play (▶) or pause (⏸) icon + podcast name or album display name, bold, truncated to fit
-3. **Title area**: episode title or track filename, plain, up to 2 lines, truncated with `...`
-4. **Progress bar**: filled/unfilled, full width with margin, no numbers
+1. **Dot circle with mode icon** (top-right): 12 dots in a circle representing the rotary knob positions, with the current position shown as a larger filled dot. A mode icon (podcast or music) is centered inside the dot circle.
 
-### Mode icon (top-right corner)
+2. **Name line**: play (▶) or pause (⏸) icon + podcast name or album display name (bold, truncated to fit) + completion checkbox (☐/☑) immediately after the name text.
 
-- Optional 1-bit `.png` bitmap, pasted onto the canvas at top-right
+3. **Title area**: episode title or track filename, regular weight, up to 2 lines, word-wrapped, truncated with `...` if needed.
+
+4. **Progress bar**: full display width with margins, outlined rectangle with black fill representing progress. No text/numbers.
+
+---
+
+## Dot Circle (Knob Position Indicator)
+
+A circle of 12 dots mirroring the physical 12-position rotary knob.
+
+### Positioning
+
+- Top-right corner of the display
+- ~44px diameter (22px radius)
+- Mode icon centered inside the circle
+
+### Dot orientation
+
+Dots are numbered 1–12 clockwise, starting from the bottom-left:
+
+- **Position 1**: 7 o'clock (bottom-left)
+- **Position 6**: 12 o'clock (top)
+- **Position 12**: 6 o'clock (bottom)
+
+### Dot rendering
+
+- Inactive positions: small filled dot (~2px radius)
+- Active position: larger filled dot (~4px radius)
+
+### Center icon
+
 - Podcast mode: `icons/podcast.png` (microphone with broadcast arcs)
 - Music mode: `icons/music.png` (beamed eighth notes)
-- Size: ~24×24px (tuned on real hardware)
-- Icons are pre-made 1-bit PNGs stored in an `icons/` directory
+- Pre-made 1-bit PNGs, resized to 24×24px, stored in `icons/` directory
 - If icon file is missing: skip silently, no crash
-- The `show()` method accepts an optional `icon` parameter — a string key like `"podcast"` or `"music"`, or `None` for no icon
 
-### Checkbox
+---
 
-- ☑ = this episode/album has been completed before (played to the end at least once)
+## Completion Checkbox
+
+- Small checkbox (☐ unchecked / ☑ checked) drawn inline on the name line, immediately after the name text with a small gap
+- ☑ = this album/podcast episode has been played to the end at least once
 - ☐ = not yet completed
-- Shown in both play and pause modes
-- Completion tracking is a state concern handled elsewhere — the display just receives a boolean
+- The checkbox reduces the available width for the name text — name is truncated to leave room
 
-### Progress bar
+---
 
-- Podcast: `position / episode_duration`
-- Music: `position / track_duration`
-- If duration unknown: empty bar (all unfilled)
+## Play / Pause Icon
+
+- **Playing**: filled triangle pointing right (▶)
+- **Paused**: two vertical bars (⏸)
+- Drawn at the left edge of the name line, before the name text
+
+---
+
+## Progress Bar
+
+- Full display width minus left/right margins
+- Thin outlined rectangle with black fill from the left representing progress (0.0–1.0)
+- If duration is unknown: empty bar (outline only)
+
+---
+
+## Text Rendering
+
+- **Font**: monospace TTF (DejaVu Sans Mono preferred, falls back to Liberation Mono, FreeMono, then Pillow default)
+- **Name line**: bold, ~11px
+- **Title lines**: regular, ~10px
+- **Truncation**: names and titles truncated with `...` if they exceed available width
+- **Title wrapping**: up to 2 lines, word-wrapped, last line truncated if needed
+- **No scrolling, no animation, all text is static**
 
 ---
 
 ## Display States
 
+| State | Play/pause icon | Name | Title | Checkbox | Progress | Dot circle icon |
+|-------|----------------|------|-------|----------|----------|----------------|
+| Podcast playing | ▶ | podcast name | episode title | completion state | position/duration | podcast |
+| Podcast paused | ⏸ | podcast name | episode title | completion state | frozen | podcast |
+| Music playing | ▶ | album display name | track filename | completion state | position/duration | music |
+| Music paused | ⏸ | album display name | track filename | completion state | frozen | music |
+| Album completed | ⏸ | album display name | last track filename | ☑ | full | music |
+| No episode | ⏸ | podcast name | "Error - no episode found" | ☐ | empty | podcast |
+| Blank | — | — | — | — | — | — |
+
 ### Boot / no content → blank
 
-On startup, one full refresh to clear display to white. Stays blank until the first mode change that has content to show. Fresh boot with nothing downloaded = blank.
-
-### Playing (podcast or music)
-
-- Icon: ▶
-- Name: podcast name (podcast mode) or album display name (music mode)
-- Title: episode title (podcast) or track filename (music)
-- Progress bar: updates every 30 seconds
-- Checkbox: reflects completion state of current episode/album
-
-### Paused
-
-- Icon: ⏸ (replaces ▶, everything else identical)
-- Shows info from **last active mode** (was playing music → pause shows album; was playing podcast → pause shows podcast)
-- **Knob turns while paused update the display** — preview what would play if the switch is flipped. The mode context (podcast vs music) comes from the last active mode.
-- Progress bar: frozen at last position
+On startup, one full refresh to clear display to white. Stays blank until the first mode change that has content to show.
 
 ### Paused with no prior playback
 
-If the player has never played anything in this session (e.g. fresh boot, mode starts as PAUSED), display stays blank. First play action triggers the first draw.
+If the player has never played anything in this session, display stays blank. First play action triggers the first draw.
 
 ---
 
@@ -103,34 +144,23 @@ If the player has never played anything in this session (e.g. fresh boot, mode s
 |-------|---------------|
 | Mode switch to PLAYING | Redraw with ▶ + podcast info |
 | Mode switch to MUSIC_MODE | Redraw with ▶ + album info |
-| Mode switch to PAUSED | Redraw with ⏸ (keep current content) |
-| Knob turn while playing | Redraw (new podcast/album selected) |
+| Mode switch to PAUSED | Redraw with ⏸, keep current content |
+| Knob turn while playing | Redraw with new podcast/album |
 | Knob turn while paused | Redraw with preview of new selection |
-| Progress update (every 30s) | Redraw progress bar only |
-| Track change (music) | Show full bar briefly, then redraw with new track |
-| Album completed (music) | Show ☑ + full progress bar, stay on screen |
-| No episode available | Show podcast name + "Error - no episode found" |
+| Progress update (every 30s) | Redraw with updated progress |
+| Track change (music) | Redraw with new track info |
+| Album completed (music) | Show ☑ + full progress bar |
+| No episode available | Show name + error title |
 | RSS check running/completed | No display change (LED handles this) |
 | Shutdown | Put display to sleep |
 
 ---
 
-## Fonts
+## Refresh Strategy
 
-Monospace `.ttf` font for clean rendering at small sizes on 1-bit display.
-
-**Sizes (tuned on real hardware):**
-- Status line (checkbox + knob): ~9px
-- Name (bold): ~11px
-- Title: ~10px
-
----
-
-## Text Handling
-
-- **Never scroll.** Truncate with `...` if it doesn't fit.
-- **Max 2 lines** for episode title / track filename.
-- **All text is static.** No animations, no marquee.
+- **Partial refresh** for all normal updates (~0.3s)
+- **One full refresh on startup** to clear ghosting
+- **Periodic full refresh** every ~50 partial refreshes to reduce ghosting buildup
 
 ---
 
@@ -141,7 +171,7 @@ class EinkDisplay:
     """E-Ink display controller. Optional — disabled if hardware missing."""
 
     def __init__(self, icons_dir: str = "icons"):
-        """Init display. Loads icon bitmaps from icons_dir.
+        """Init display. Loads icon PNGs from icons_dir.
         Sets self.available = False if libs/hardware missing."""
 
     def clear(self):
@@ -149,7 +179,7 @@ class EinkDisplay:
 
     def show(self, name: str, title: str, progress: float,
              knob_position: int, is_playing: bool, is_completed: bool,
-             icon: str | None = None):
+             icon: Optional[str] = None):
         """
         Draw the screen. Single method for all states.
 
@@ -157,10 +187,10 @@ class EinkDisplay:
             name:           podcast name or album display name
             title:          episode title or track filename
             progress:       0.0 to 1.0 (progress bar fill)
-            knob_position:  1-12 (shown as "Knob: N/12")
+            knob_position:  1-12 (active dot in the circle)
             is_playing:     True = ▶, False = ⏸
             is_completed:   True = ☑, False = ☐
-            icon:           optional icon key — "podcast", "music", or None
+            icon:           "podcast", "music", or None
         """
 
     def show_blank(self):
@@ -174,6 +204,16 @@ One render method. Callers pass data, display draws it.
 
 ---
 
+## Graceful Degradation
+
+Same pattern as `LEDController` and `HardwareController`:
+
+- If Pillow or the Waveshare library is missing, or hardware init fails, `self.available = False`
+- Every public method is a no-op if `self.available` is False
+- No crashes, no errors — just silently disabled
+
+---
+
 ## Integration Points
 
 ### podcast_player.py
@@ -183,7 +223,7 @@ Display updated from the main controller:
 - `switch_to_podcast()` → `display.show(..., icon="podcast")`
 - `switch_to_album()` → `display.show(..., icon="music")`
 - `pause()` → `display.show(...)` with current info, `is_playing=False`, same icon as last active mode
-- `handle_switch_change()` knob turn while paused → `display.show(...)` with preview info, same icon as last active mode
+- `handle_switch_change()` knob turn while paused → `display.show(...)` with preview info
 - `_on_track_ended()` → redraw with new track info
 - Main loop every 30s during playback → `display.show(...)` with updated progress
 
@@ -198,41 +238,11 @@ if self.audio.is_playing() and time.time() - last_display_update > 30:
 
 ---
 
-## Graceful Degradation
-
-Same pattern as `LEDController` and `HardwareController`:
-
-```python
-DISPLAY_AVAILABLE = PIL_AVAILABLE and EPD_AVAILABLE
-
-class EinkDisplay:
-    def __init__(self):
-        self.available = False
-        if not DISPLAY_AVAILABLE:
-            log("DEBUG", "E-ink display not available")
-            return
-        try:
-            self.epd = epd2in13_V4.EPD()
-            self.epd.init()
-            self.available = True
-        except Exception as e:
-            log("WARNING", f"E-ink init failed: {e}")
-
-    def show(self, name, title, progress, knob_position, is_playing, is_completed, icon=None):
-        if not self.available:
-            return
-        # ... render and display
-```
-
-Every public method is a no-op if `self.available` is False.
-
----
-
 ## Demo Mode
 
-Run `python eink_display.py` to cycle through all display states on the real e-ink screen. **Requires hardware** — exits immediately if no display is detected.
+Run `python eink_display.py` to cycle through display states on the real e-ink screen. **Requires hardware** — exits immediately if no display is detected.
 
-- Cycles 6 screens (3 seconds each): podcast playing, podcast paused (completed), music playing, music paused, album completed, no episode error
+- Cycles 8 screens (20 seconds each): podcast playing, podcast paused (completed), music playing, music paused, album completed, no episode error, long name truncation, position 12 test
 - Loops until Ctrl+C
 - Blank screen shown between cycles
 - On exit: clears display and puts it to sleep
@@ -257,10 +267,6 @@ When one track ends and the next begins, the display briefly shows the **complet
 
 Display ignores RSS checks entirely. LED handles that feedback.
 
-### Pause / resume timing
-
-No immediate redraw on pause/resume. The main loop polls at ~100ms which is fast enough — the display updates on the next cycle.
-
 ---
 
 ## File Summary
@@ -271,8 +277,6 @@ No immediate redraw on pause/resume. The main loop polls at ~100ms which is fast
 | `icons/podcast.png` | **NEW** | 1-bit podcast icon (24×24px, white background) |
 | `icons/music.png` | **NEW** | 1-bit music icon (24×24px, white background) |
 | `podcast_player.py` | MODIFIED | Call `display.show()` on mode/knob/progress changes |
-| `main.py` | UNCHANGED | Display init happens inside PodcastPlayer |
-| `config.py` | UNCHANGED | No config needed |
 | `requirements.txt` | MODIFIED | Add `Pillow` (waveshare lib is vendored) |
 
 ---
@@ -287,5 +291,4 @@ No immediate redraw on pause/resume. The main loop polls at ~100ms which is fast
 - No different layouts per mode (one layout fits all)
 - No track number display (just filename)
 - No display feedback for RSS checks, warnings, or errors (LED handles those)
-- No immediate redraw on pause/resume — main loop polling (~100ms) is fast enough
 - No PNG export in demo mode — demo requires real hardware
