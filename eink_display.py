@@ -1,20 +1,24 @@
 """E-Ink display controller for Waveshare 2.13" V4 (250x122, 1-bit).
 
+Layout (see specs.md for full details):
+  - Top-right: dot circle (12 dots mimicking rotary knob) with mode icon centered inside
+  - Name line: play/pause icon + name (bold) + completion checkbox
+  - Title: up to 2 lines, word-wrapped, truncated with '...'
+  - Progress bar: full width, bottom
+
 Completely optional — gracefully disabled if hardware or libs are missing.
-Follows the same pattern as LEDController and HardwareController.
 """
 
+import math
 import os
 import sys
 import time
-from pathlib import Path
 from typing import Optional
 
 from utils import log
 
 # --- Dependency detection -------------------------------------------------
 
-# Add vendored waveshare lib to path
 _libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib")
 if os.path.exists(_libdir):
     sys.path.insert(0, _libdir)
@@ -48,33 +52,37 @@ HEIGHT = 122
 
 # --- Layout constants (pixels) --------------------------------------------
 
-MARGIN = 6
-STATUS_Y = 4  # top of status line
-NAME_Y = 24  # top of name line
-TITLE_Y = 48  # top of first title line
-TITLE_LINE2_Y = 62  # top of second title line
-BAR_Y = 82  # top of progress bar
-BAR_HEIGHT = 5
+MARGIN = 7
+
+# Dot circle (top-right)
+DOT_CIRCLE_RADIUS = 22
+DOT_CIRCLE_CX = WIDTH - MARGIN - DOT_CIRCLE_RADIUS - 2
+DOT_CIRCLE_CY = MARGIN + DOT_CIRCLE_RADIUS + 2
+DOT_RADIUS_INACTIVE = 2
+DOT_RADIUS_ACTIVE = 4
+
+# Content area (below dot circle)
+NAME_Y = 48
+TITLE_Y = 68
+TITLE_LINE2_Y = 83
+BAR_Y = 102
+BAR_HEIGHT = 6
 BAR_WIDTH = WIDTH - 2 * MARGIN
 
-ICON_SIZE = 24  # mode icon dimensions (square)
-ICON_X = WIDTH - MARGIN - ICON_SIZE
-ICON_Y = 2
-
-PLAY_ICON_SIZE = 14  # play/pause triangle/bars size
+# Play/pause icon
+PLAY_ICON_SIZE = 12
 PLAY_ICON_X = MARGIN
 PLAY_ICON_Y = NAME_Y
 
-# Checkbox dimensions
-CHECK_SIZE = 10
+# Completion checkbox
+CHECK_SIZE = 9
+CHECK_GAP = 5  # gap between name text and checkbox
 
-# --- Font sizes ------------------------------------------------------------
+# Font sizes
+FONT_SIZE_NAME = 11
+FONT_SIZE_TITLE = 10
 
-FONT_SIZE_STATUS = 12
-FONT_SIZE_NAME = 14
-FONT_SIZE_TITLE = 13
-
-# Full refresh interval (number of partial refreshes between full refreshes)
+# Full refresh interval (partial refreshes between full refreshes)
 FULL_REFRESH_INTERVAL = 50
 
 
@@ -101,35 +109,32 @@ class EinkDisplay:
             return
 
         # Load fonts
-        self._font_status = self._load_font(FONT_SIZE_STATUS)
         self._font_name = self._load_font(FONT_SIZE_NAME, bold=True)
         self._font_title = self._load_font(FONT_SIZE_TITLE)
 
-        # Load mode icons
+        # Load mode icons from PNG files
         self._load_icons(icons_dir)
 
     # --- Font loading ------------------------------------------------------
 
-    def _load_font(self, size: int, bold: bool = False) -> "ImageFont":
-        """Load a TTF font at the given size, falling back to default."""
-        # Try common monospace fonts available on Raspberry Pi OS
-        font_paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-            "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
-        ]
+    def _load_font(self, size: int, bold: bool = False):
+        """Load a monospace TTF font, falling back to Pillow default."""
+        candidates = []
 
         if bold:
-            # Try bold variants first
-            bold_paths = [
+            candidates += [
                 "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
                 "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
                 "/usr/share/fonts/truetype/freefont/FreeMonoBold.ttf",
             ]
-            font_paths = bold_paths + font_paths
 
-        for path in font_paths:
+        candidates += [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
+        ]
+
+        for path in candidates:
             if os.path.exists(path):
                 try:
                     return ImageFont.truetype(path, size)
@@ -141,8 +146,18 @@ class EinkDisplay:
 
     # --- Icon loading ------------------------------------------------------
 
+    # Icon size — PNGs are resized to this square dimension to fit inside the dot circle
+    ICON_SIZE = 24
+
     def _load_icons(self, icons_dir: str):
-        """Load 1-bit PNG icons from the icons directory."""
+        """Load 1-bit PNG icons from the icons directory.
+
+        Expected files: icons/podcast.png, icons/music.png
+        Icons are resized to ICON_SIZE x ICON_SIZE and converted to 1-bit.
+        Missing icons are silently skipped.
+        """
+        from pathlib import Path
+
         icons_path = Path(icons_dir)
         if not icons_path.is_dir():
             log("DEBUG", f"Icons directory not found: {icons_dir}")
@@ -155,9 +170,9 @@ class EinkDisplay:
                 continue
             try:
                 img = Image.open(icon_file).convert("1")
-                img = img.resize((ICON_SIZE, ICON_SIZE), Image.NEAREST)
+                img = img.resize((self.ICON_SIZE, self.ICON_SIZE), Image.NEAREST)
                 self._icons[name] = img
-                log("DEBUG", f"Loaded icon: {name} ({ICON_SIZE}x{ICON_SIZE})")
+                log("DEBUG", f"Loaded icon: {name} ({self.ICON_SIZE}x{self.ICON_SIZE})")
             except Exception as e:
                 log("WARNING", f"Failed to load icon {name}: {e}")
 
@@ -192,18 +207,16 @@ class EinkDisplay:
             name:           podcast name or album display name
             title:          episode title or track filename
             progress:       0.0 to 1.0 (progress bar fill)
-            knob_position:  1-12 (shown as "Knob: N/12")
+            knob_position:  1-12 (active dot in the circle)
             is_playing:     True = play icon, False = pause icon
             is_completed:   True = checked box, False = unchecked box
-            icon:           optional icon key — "podcast", "music", or None
+            icon:           "podcast", "music", or None
         """
         if not self.available:
             return
 
         try:
-            image = self._render(
-                name, title, progress, knob_position, is_playing, is_completed, icon
-            )
+            image = self._render(name, title, progress, knob_position, is_playing, is_completed, icon)
             self._display(image)
         except Exception as e:
             log("ERROR", f"Display show failed: {e}")
@@ -230,120 +243,130 @@ class EinkDisplay:
 
     # --- Rendering ---------------------------------------------------------
 
-    def _render(
-        self,
-        name: str,
-        title: str,
-        progress: float,
-        knob_position: int,
-        is_playing: bool,
-        is_completed: bool,
-        icon: Optional[str],
-    ) -> "Image":
+    def _render(self, name, title, progress, knob_position, is_playing, is_completed, icon):
         """Render all elements onto a 1-bit PIL Image."""
-        image = Image.new("1", (WIDTH, HEIGHT), 255)  # white background
+        image = Image.new("1", (WIDTH, HEIGHT), 255)
         draw = ImageDraw.Draw(image)
 
-        # 1. Status line: checkbox + knob position
-        self._draw_checkbox(draw, MARGIN, STATUS_Y, is_completed)
-        status_text = f"Knob: {knob_position}/12"
-        draw.text(
-            (MARGIN + CHECK_SIZE + 4, STATUS_Y - 1),
-            status_text,
-            font=self._font_status,
-            fill=0,
-        )
-
-        # 2. Mode icon (top-right)
+        # 1. Dot circle with mode icon (top-right)
+        self._draw_dot_circle(draw, DOT_CIRCLE_CX, DOT_CIRCLE_CY, DOT_CIRCLE_RADIUS, knob_position)
         if icon and icon in self._icons:
-            image.paste(self._icons[icon], (ICON_X, ICON_Y))
+            self._paste_mode_icon(image, DOT_CIRCLE_CX, DOT_CIRCLE_CY, icon)
 
-        # 3. Play/pause icon + name
-        self._draw_play_pause(draw, is_playing)
-        name_x = PLAY_ICON_X + PLAY_ICON_SIZE + 6
-        max_name_width = WIDTH - name_x - MARGIN
-        truncated_name = self._truncate_text(name, self._font_name, max_name_width)
-        draw.text(
-            (name_x, NAME_Y),
-            truncated_name,
-            font=self._font_name,
-            fill=0,
-        )
+        # 2. Play/pause icon + name + completion checkbox
+        if is_playing:
+            self._draw_play_icon(draw, PLAY_ICON_X, PLAY_ICON_Y)
+        else:
+            self._draw_pause_icon(draw, PLAY_ICON_X, PLAY_ICON_Y)
 
-        # 4. Title (up to 2 lines)
-        max_title_width = WIDTH - 2 * MARGIN
-        lines = self._wrap_text(title, self._font_title, max_title_width, max_lines=2)
+        name_x = PLAY_ICON_X + PLAY_ICON_SIZE + 5
+        max_name_w = WIDTH - name_x - MARGIN - CHECK_SIZE - CHECK_GAP - 2
+        truncated_name = self._truncate_text(name, self._font_name, max_name_w)
+        draw.text((name_x, NAME_Y), truncated_name, font=self._font_name, fill=0)
+
+        name_text_w = self._get_text_width(truncated_name, self._font_name)
+        check_x = name_x + name_text_w + CHECK_GAP
+        check_y = NAME_Y + 1
+        self._draw_checkbox(draw, check_x, check_y, CHECK_SIZE, is_completed)
+
+        # 3. Title (up to 2 lines)
+        max_title_w = WIDTH - 2 * MARGIN
+        lines = self._wrap_text(title, self._font_title, max_title_w, max_lines=2)
         if len(lines) >= 1:
             draw.text((MARGIN, TITLE_Y), lines[0], font=self._font_title, fill=0)
         if len(lines) >= 2:
             draw.text((MARGIN, TITLE_LINE2_Y), lines[1], font=self._font_title, fill=0)
 
-        # 5. Progress bar
-        self._draw_progress_bar(draw, progress)
+        # 4. Progress bar
+        self._draw_progress_bar(draw, MARGIN, BAR_Y, BAR_WIDTH, BAR_HEIGHT, progress)
 
         return image
 
-    def _draw_checkbox(self, draw: "ImageDraw", x: int, y: int, checked: bool):
-        """Draw a small checkbox (checked or unchecked)."""
-        # Outer box
-        draw.rectangle(
-            [x, y, x + CHECK_SIZE, y + CHECK_SIZE], outline=0, fill=255, width=1
+    # --- Drawing primitives ------------------------------------------------
+
+    def _draw_dot_circle(self, draw, cx, cy, radius, active_position):
+        """Draw 12 dots in a circle. Position 1 at 7 o'clock, clockwise to 12 at 6 o'clock."""
+        for i in range(1, 13):
+            # Start at 7 o'clock (210°) and go clockwise in 30° steps
+            # 7 o'clock = 210° = 7π/6 radians
+            angle = (7.0 / 6.0) * math.pi + (i - 1) * (2.0 * math.pi / 12.0)
+            dx = cx + math.cos(angle) * radius
+            dy = cy + math.sin(angle) * radius
+
+            if i == active_position:
+                r = DOT_RADIUS_ACTIVE
+            else:
+                r = DOT_RADIUS_INACTIVE
+
+            draw.ellipse(
+                [int(dx - r), int(dy - r), int(dx + r), int(dy + r)],
+                fill=0,
+            )
+
+    def _paste_mode_icon(self, image, cx, cy, icon_key):
+        """Paste a pre-loaded PNG icon centered at (cx, cy) inside the dot circle."""
+        icon_img = self._icons.get(icon_key)
+        if icon_img is None:
+            return
+        # Center the icon at (cx, cy)
+        x = cx - icon_img.width // 2
+        y = cy - icon_img.height // 2
+        image.paste(icon_img, (x, y))
+
+    def _draw_play_icon(self, draw, x, y):
+        """Filled triangle pointing right."""
+        s = PLAY_ICON_SIZE
+        draw.polygon(
+            [(x, y), (x, y + s), (x + s, y + s // 2)],
+            fill=0,
         )
+
+    def _draw_pause_icon(self, draw, x, y):
+        """Two vertical bars."""
+        s = PLAY_ICON_SIZE
+        bar_w = max(s // 4, 2)
+        gap = s // 5
+        # Left bar
+        draw.rectangle([x + gap, y, x + gap + bar_w, y + s], fill=0)
+        # Right bar
+        draw.rectangle([x + s - gap - bar_w, y, x + s - gap, y + s], fill=0)
+
+    def _draw_checkbox(self, draw, x, y, size, checked):
+        """Small checkbox: outline square, with checkmark if checked."""
+        draw.rectangle([x, y, x + size, y + size], outline=0, fill=255, width=1)
         if checked:
-            # Draw checkmark as two lines
-            draw.line([(x + 2, y + 5), (x + 4, y + CHECK_SIZE - 2)], fill=0, width=1)
+            # Checkmark as two lines
             draw.line(
-                [(x + 4, y + CHECK_SIZE - 2), (x + CHECK_SIZE - 2, y + 2)],
+                [(x + 2, y + int(size * 0.52)), (x + int(size * 0.4), y + size - 2)],
+                fill=0,
+                width=1,
+            )
+            draw.line(
+                [(x + int(size * 0.4), y + size - 2), (x + size - 2, y + 2)],
                 fill=0,
                 width=1,
             )
 
-    def _draw_play_pause(self, draw: "ImageDraw", is_playing: bool):
-        """Draw play triangle or pause bars."""
-        x = PLAY_ICON_X
-        y = PLAY_ICON_Y
-        s = PLAY_ICON_SIZE
-
-        if is_playing:
-            # Filled triangle pointing right
-            draw.polygon([(x, y), (x, y + s), (x + s, y + s // 2)], fill=0)
-        else:
-            # Two vertical bars
-            bar_w = s // 4
-            gap = s // 5
-            left_x = x + gap
-            right_x = x + s - gap - bar_w
-            draw.rectangle([left_x, y, left_x + bar_w, y + s], fill=0)
-            draw.rectangle([right_x, y, right_x + bar_w, y + s], fill=0)
-
-    def _draw_progress_bar(self, draw: "ImageDraw", progress: float):
-        """Draw progress bar: gray background + black fill."""
+    def _draw_progress_bar(self, draw, x, y, w, h, progress):
+        """Outlined bar with black fill representing progress."""
         progress = max(0.0, min(1.0, progress))
 
-        # Background (gray = dithered on 1-bit, so use outline only)
-        draw.rectangle(
-            [MARGIN, BAR_Y, MARGIN + BAR_WIDTH, BAR_Y + BAR_HEIGHT],
-            outline=0,
-            fill=255,
-            width=1,
-        )
+        # Outline
+        draw.rectangle([x, y, x + w, y + h], outline=0, fill=255, width=1)
 
         # Fill
-        fill_width = int(BAR_WIDTH * progress)
-        if fill_width > 0:
-            draw.rectangle(
-                [MARGIN, BAR_Y, MARGIN + fill_width, BAR_Y + BAR_HEIGHT],
-                fill=0,
-            )
+        fill_w = int(w * progress)
+        if fill_w > 0:
+            draw.rectangle([x, y, x + fill_w, y + h], fill=0)
 
     # --- Text helpers ------------------------------------------------------
 
-    def _get_text_width(self, text: str, font: "ImageFont") -> int:
+    def _get_text_width(self, text, font):
         """Get rendered width of text in pixels."""
         bbox = font.getbbox(text)
         return bbox[2] - bbox[0]
 
-    def _truncate_text(self, text: str, font: "ImageFont", max_width: int) -> str:
+    def _truncate_text(self, text, font, max_width):
         """Truncate text with '...' if it exceeds max_width."""
         if self._get_text_width(text, font) <= max_width:
             return text
@@ -355,46 +378,40 @@ class EinkDisplay:
 
         return "..."
 
-    def _wrap_text(
-        self, text: str, font: "ImageFont", max_width: int, max_lines: int = 2
-    ) -> list:
-        """
-        Break text into lines that fit within max_width.
-        Last line is truncated with '...' if text doesn't fit.
+    def _wrap_text(self, text, font, max_width, max_lines=2):
+        """Break text into lines that fit within max_width.
+
+        Words are kept whole when possible. The last line is truncated with
+        '...' if the text doesn't fit within max_lines.
         """
         if not text:
             return []
 
         words = text.split()
         lines = []
-        current_line = ""
+        current = ""
 
         for word in words:
-            test = f"{current_line} {word}".strip()
-            if self._get_text_width(test, font) <= max_width:
-                current_line = test
-            else:
-                if current_line:
-                    lines.append(current_line)
-                current_line = word
+            test = f"{current} {word}".strip()
 
-                # Hit max lines — truncate remainder into last line
+            if self._get_text_width(test, font) <= max_width:
+                current = test
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+
                 if len(lines) >= max_lines:
-                    break
+                    # Ran out of lines — truncate whatever is left
+                    remaining = " ".join(words[words.index(word) :])
+                    lines[-1] = self._truncate_text(lines[-1] + " " + remaining, font, max_width)
+                    return lines[:max_lines]
 
         # Add the last line being built
-        if current_line and len(lines) < max_lines:
-            lines.append(current_line)
-        elif current_line and len(lines) == max_lines:
-            # Remaining text didn't fit — truncate the last line
-            remaining = current_line
-            for w in words[words.index(current_line.split()[0]) :]:
-                pass  # already consumed
-            lines[-1] = self._truncate_text(
-                lines[-1] + " " + current_line, font, max_width
-            )
+        if current and len(lines) < max_lines:
+            lines.append(current)
 
-        # Truncate last line if it's too wide (e.g. single very long word)
+        # Truncate last line if a single long word overflows
         if lines:
             lines[-1] = self._truncate_text(lines[-1], font, max_width)
 
@@ -402,12 +419,11 @@ class EinkDisplay:
 
     # --- Display output ----------------------------------------------------
 
-    def _display(self, image: "Image"):
+    def _display(self, image):
         """Send image to the e-ink display (partial or full refresh)."""
         self._partial_count += 1
 
         if self._partial_count >= FULL_REFRESH_INTERVAL:
-            # Periodic full refresh to reduce ghosting
             self.epd.init()
             self.epd.Clear(0xFF)
             self._partial_count = 0
@@ -416,12 +432,11 @@ class EinkDisplay:
         self.epd.displayPartial(self.epd.getbuffer(image))
 
 
-# --- Demo (requires e-ink hardware) ----------------------------------------
-
+# --- Demo -----------------------------------------------------------------
 
 DEMO_SCREENS = [
     {
-        "label": "Podcast playing",
+        "label": "Podcast playing (pos 3, not completed)",
         "args": dict(
             name="LANZ & PRECHT",
             title="Ausgabe 421: Über die Zukunft der Arbeit in Deutschland",
@@ -433,7 +448,7 @@ DEMO_SCREENS = [
         ),
     },
     {
-        "label": "Podcast paused (completed)",
+        "label": "Podcast paused (pos 7, completed)",
         "args": dict(
             name="Hotel Matze",
             title="Matze Hielscher im Gespräch mit Eva Schulz",
@@ -445,7 +460,7 @@ DEMO_SCREENS = [
         ),
     },
     {
-        "label": "Music playing",
+        "label": "Music playing (pos 1, not completed)",
         "args": dict(
             name="OK Computer",
             title="03 - Exit Music (For a Film).mp3",
@@ -457,7 +472,7 @@ DEMO_SCREENS = [
         ),
     },
     {
-        "label": "Music paused",
+        "label": "Music paused (pos 4, not completed)",
         "args": dict(
             name="Stadtaffe",
             title="01 - Schwarz zu Blau.mp3",
@@ -469,7 +484,7 @@ DEMO_SCREENS = [
         ),
     },
     {
-        "label": "Album completed",
+        "label": "Album completed (pos 3, checked)",
         "args": dict(
             name="Meteora",
             title="13 - Numb.mp3",
@@ -481,7 +496,7 @@ DEMO_SCREENS = [
         ),
     },
     {
-        "label": "No episode available",
+        "label": "No episode available (pos 2)",
         "args": dict(
             name="Fest und Flauschig",
             title="Error - no episode found",
@@ -492,27 +507,50 @@ DEMO_SCREENS = [
             icon="podcast",
         ),
     },
+    {
+        "label": "Long name truncation (pos 9)",
+        "args": dict(
+            name="Aufstand Im Schlaraffenland",
+            title="01 - Remmidemmi (Yippie Yippie Yeah).mp3",
+            progress=0.42,
+            knob_position=9,
+            is_playing=True,
+            is_completed=False,
+            icon="music",
+        ),
+    },
+    {
+        "label": "Position 12 (bottom dot, completed)",
+        "args": dict(
+            name="Radiolab",
+            title="The Fact of the Matter",
+            progress=1.0,
+            knob_position=12,
+            is_playing=False,
+            is_completed=True,
+            icon="podcast",
+        ),
+    },
 ]
 
 
 def _demo():
-    """
-    Demo mode: cycles through all display states on the real e-ink screen.
-    Requires e-ink hardware — exits if not detected.
+    """Cycle through all display states on the real e-ink screen.
+
+    Requires e-ink hardware — exits immediately if not detected.
     Press Ctrl+C to stop.
     """
     print("E-Ink Display Demo")
     print("=" * 40)
 
     SHOW_DURATION_S = 20
+
     display = EinkDisplay()
     if not display.available:
         print("No e-ink display detected. Demo requires hardware.")
         return
 
-    print(
-        f"Cycling {len(DEMO_SCREENS)} screens ({SHOW_DURATION_S}s each). Ctrl+C to stop.\n"
-    )
+    print(f"Cycling {len(DEMO_SCREENS)} screens ({SHOW_DURATION_S}s each). Ctrl+C to stop.\n")
 
     try:
         display.clear()
@@ -524,7 +562,6 @@ def _demo():
                 display.show(**screen["args"])
                 time.sleep(SHOW_DURATION_S)
 
-            # Show blank between cycles
             print("  Blank")
             display.show_blank()
             time.sleep(2)
