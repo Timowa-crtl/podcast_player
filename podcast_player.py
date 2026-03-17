@@ -18,9 +18,6 @@ from utils import log, set_led_controller
 # How often to refresh the e-ink progress bar during playback (seconds)
 DISPLAY_UPDATE_INTERVAL = 30
 
-# How long to wait after play() before trying to read duration from VLC (seconds)
-DURATION_CAPTURE_DELAY = 1.5
-
 
 class PodcastPlayer:
     """Main controller for the podcast player system."""
@@ -58,7 +55,6 @@ class PodcastPlayer:
 
         # Display timing
         self._last_display_update = 0.0
-        self._playback_start_time = 0.0
 
         log("INFO", "Initialization complete")
 
@@ -249,50 +245,28 @@ class PodcastPlayer:
             is_completed=ms.get("ever_completed", False), icon="music",
         )
 
-    def _try_capture_duration(self):
-        """Try to read duration from VLC and store it. Called from main loop.
+    def _capture_duration(self):
+        """Read duration from VLC and store it. Called once right after play().
 
-        Uses state as source of truth — if duration is already stored, does nothing.
-        Only queries VLC when duration is missing (first play of an episode/track).
+        VLC needs a moment to parse the file, so _get_duration_internal() polls
+        for up to 2 seconds. This blocks briefly but only runs once per
+        episode/track — if duration is already in state, it's skipped entirely.
         """
-        if not self.audio.is_active():
-            return
-
-        # Already stored in state? Nothing to do.
-        if self._is_music_mode():
-            stored = self.state.get_music_track_duration(self.current_music_id) if self.current_music_id else 0.0
-        else:
-            stored = self.state.get_episode_duration(self.current_podcast_id, self.current_episode_index) if self.current_podcast_id is not None and self.current_episode_index is not None else 0.0
-
-        if stored > 0:
-            log("DEBUG", f"Duration already known: {stored}s")
-            return
-
-        # Wait a bit after playback starts for VLC to parse the file
-        if time.time() - self._playback_start_time < DURATION_CAPTURE_DELAY:
-            return
-
-        duration = self.audio.get_duration()
+        duration = self.audio._get_duration_internal(timeout=2.0)
         if duration <= 0:
+            log("DEBUG", "Could not read duration from VLC")
             return
 
         if self._is_music_mode():
             if self.current_music_id:
                 self.state.update_music_track_duration(self.current_music_id, duration)
-                log("DEBUG", f"Captured music track duration: {duration:.1f}s")
+                log("DEBUG", f"Music track duration: {duration:.1f}s")
         else:
             if self.current_podcast_id is not None and self.current_episode_index is not None:
                 self.state.update_episode_duration(
                     self.current_podcast_id, self.current_episode_index, duration
                 )
-                log("DEBUG", f"Captured episode duration: {duration:.1f}s")
-
-        # Redraw display now that we have duration for the progress bar
-        self._update_display()
-
-    def _mark_playback_started(self):
-        """Reset duration capture timing when a new file starts playing."""
-        self._playback_start_time = time.time()
+                log("DEBUG", f"Episode duration: {duration:.1f}s")
 
     # --- Position saving ---
 
@@ -428,7 +402,11 @@ class PodcastPlayer:
         pos = max(0, ep["position"] - 2)
         log("INFO", f"Playing: {ep['title'][:50]}... at {pos:.1f}s")
         self.audio.play(str(path), pos)
-        self._mark_playback_started()
+
+        # Capture duration once (skipped if already stored from a previous play)
+        if ep.get("duration", 0.0) <= 0:
+            self._capture_duration()
+
         self.led.set_state(LEDState.PLAYING)
         self._update_display()
 
@@ -521,7 +499,11 @@ class PodcastPlayer:
 
         pos = max(0, position - 2) if position > 0 else 0.0
         self.audio.play(str(track_path), pos)
-        self._mark_playback_started()
+
+        # Capture duration once (skipped if already stored from a previous play)
+        if self.state.get_music_track_duration(self.current_music_id) <= 0:
+            self._capture_duration()
+
         self.led.set_state(LEDState.PLAYING)
         self._update_display()
 
@@ -639,9 +621,6 @@ class PodcastPlayer:
                 # Check for end-of-track in music mode
                 if self._is_music_mode() and self.audio.has_ended():
                     self._on_track_ended()
-
-                # Try to capture duration after playback starts
-                self._try_capture_duration()
 
                 # Periodic display update for progress bar
                 if self.audio.is_playing() and time.time() - self._last_display_update > DISPLAY_UPDATE_INTERVAL:
