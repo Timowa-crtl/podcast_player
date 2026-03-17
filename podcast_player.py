@@ -22,8 +22,9 @@ DISPLAY_UPDATE_INTERVAL = 30
 class PodcastPlayer:
     """Main controller for the podcast player system."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, skip_initial_check: bool = False):
         self.config = config
+        self.skip_initial_check = skip_initial_check
 
         log("INFO", "Initializing components...")
         self.led = LEDController()
@@ -606,7 +607,12 @@ class PodcastPlayer:
         # Clear display on startup (full refresh)
         self.display.clear()
 
-        self.check_for_new_episodes()
+        # Initial episode check (skipped with --skip-check)
+        if self.skip_initial_check:
+            log("INFO", "Skipping initial episode check (--skip-check)")
+        else:
+            self.check_for_new_episodes()
+
         schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
 
         last_state, last_podcast = self.hardware.read_state()

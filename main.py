@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Raspberry Pi Podcast Player - Main Entry Point."""
 
+import argparse
 import signal
 import sys
 
@@ -10,6 +11,14 @@ from utils import log, safe_cleanup
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Raspberry Pi Podcast Player")
+    parser.add_argument(
+        "--skip-check",
+        action="store_true",
+        help="Skip the initial RSS episode check on startup",
+    )
+    args = parser.parse_args()
+
     signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
@@ -19,7 +28,7 @@ def main():
 
     player = None
     try:
-        player = PodcastPlayer(Config())
+        player = PodcastPlayer(Config(), skip_initial_check=args.skip_check)
         log("INFO", "🚀 Starting...")
         player.run()
     except FileNotFoundError as e:
