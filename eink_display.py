@@ -68,14 +68,14 @@ PLAY_ICON_X = MARGIN
 PLAY_ICON_Y = 13
 
 # Name line (below play/pause icon, tight gap)
-NAME_Y = 34
+NAME_Y = 40
 
 # Title (below name)
-TITLE_Y = 56
-TITLE_LINE2_Y = 72
+TITLE_Y = 62
+TITLE_LINE2_Y = 78
 
 # Progress bar
-BAR_Y = 100
+BAR_Y = 106
 BAR_HEIGHT = 6
 BAR_WIDTH = WIDTH - 2 * MARGIN
 
