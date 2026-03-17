@@ -549,6 +549,17 @@ class PodcastPlayer:
         log("DEBUG", "Track ended, advancing...")
         self._advance_music_track()
 
+    def _on_episode_ended(self):
+        """Called from main loop when audio ends in podcast mode."""
+        if self.current_podcast_id is None or self.current_episode_index is None:
+            return
+
+        log("INFO", "Episode ended, marking completed")
+        self.state.mark_episode_completed(self.current_podcast_id, self.current_episode_index)
+        self.audio.stop()
+        self.led.set_state(LEDState.PAUSED)
+        self._update_display()
+
     # --- Shared controls ---
 
     def pause(self):
@@ -627,9 +638,12 @@ class PodcastPlayer:
             while True:
                 schedule.run_pending()
 
-                # Check for end-of-track in music mode
-                if self._is_music_mode() and self.audio.has_ended():
-                    self._on_track_ended()
+                # Check for end-of-track/episode
+                if self.audio.has_ended():
+                    if self._is_music_mode():
+                        self._on_track_ended()
+                    elif self.current_mode == SwitchState.PLAYING:
+                        self._on_episode_ended()
 
                 # Try to capture duration after playback starts
                 self._try_capture_duration()
