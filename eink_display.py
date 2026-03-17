@@ -476,7 +476,14 @@ class EinkDisplay:
             self._partial_count = 0
             log("DEBUG", "Display full refresh (anti-ghosting)")
 
-        self.epd.displayPartial(self.epd.getbuffer(image))
+        buf = self.epd.getbuffer(image)
+
+        if self._partial_count <= 1:
+            # First frame after full refresh: load into both buffers
+            # so partial refresh has a correct baseline (avoids dithering)
+            self.epd.displayPartBaseImage(buf)
+        else:
+            self.epd.displayPartial(buf)
 
 
 # --- Demo -----------------------------------------------------------------
