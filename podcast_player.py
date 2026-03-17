@@ -58,7 +58,6 @@ class PodcastPlayer:
 
         # Display timing
         self._last_display_update = 0.0
-        self._duration_captured = False
         self._playback_start_time = 0.0
 
         log("INFO", "Initialization complete")
@@ -251,11 +250,23 @@ class PodcastPlayer:
         )
 
     def _try_capture_duration(self):
-        """Try to read duration from VLC and store it. Called from main loop."""
-        if self._duration_captured:
-            return
+        """Try to read duration from VLC and store it. Called from main loop.
+
+        Uses state as source of truth — if duration is already stored, does nothing.
+        Only queries VLC when duration is missing (first play of an episode/track).
+        """
         if not self.audio.is_active():
             return
+
+        # Already stored in state? Nothing to do.
+        if self._is_music_mode():
+            stored = self.state.get_music_track_duration(self.current_music_id) if self.current_music_id else 0.0
+        else:
+            stored = self.state.get_episode_duration(self.current_podcast_id, self.current_episode_index) if self.current_podcast_id is not None and self.current_episode_index is not None else 0.0
+
+        if stored > 0:
+            return
+
         # Wait a bit after playback starts for VLC to parse the file
         if time.time() - self._playback_start_time < DURATION_CAPTURE_DELAY:
             return
@@ -263,8 +274,6 @@ class PodcastPlayer:
         duration = self.audio.get_duration()
         if duration <= 0:
             return
-
-        self._duration_captured = True
 
         if self._is_music_mode():
             if self.current_music_id:
@@ -281,8 +290,7 @@ class PodcastPlayer:
         self._update_display()
 
     def _mark_playback_started(self):
-        """Reset duration capture state when a new file starts playing."""
-        self._duration_captured = False
+        """Reset duration capture timing when a new file starts playing."""
         self._playback_start_time = time.time()
 
     # --- Position saving ---
@@ -549,17 +557,6 @@ class PodcastPlayer:
         log("DEBUG", "Track ended, advancing...")
         self._advance_music_track()
 
-    def _on_episode_ended(self):
-        """Called from main loop when audio ends in podcast mode."""
-        if self.current_podcast_id is None or self.current_episode_index is None:
-            return
-
-        log("INFO", "Episode ended, marking completed")
-        self.state.mark_episode_completed(self.current_podcast_id, self.current_episode_index)
-        self.audio.stop()
-        self.led.set_state(LEDState.PAUSED)
-        self._update_display()
-
     # --- Shared controls ---
 
     def pause(self):
@@ -638,12 +635,9 @@ class PodcastPlayer:
             while True:
                 schedule.run_pending()
 
-                # Check for end-of-track/episode
-                if self.audio.has_ended():
-                    if self._is_music_mode():
-                        self._on_track_ended()
-                    elif self.current_mode == SwitchState.PLAYING:
-                        self._on_episode_ended()
+                # Check for end-of-track in music mode
+                if self._is_music_mode() and self.audio.has_ended():
+                    self._on_track_ended()
 
                 # Try to capture duration after playback starts
                 self._try_capture_duration()
