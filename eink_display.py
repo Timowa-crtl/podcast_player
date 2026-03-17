@@ -1,8 +1,9 @@
 """E-Ink display controller for Waveshare 2.13" V4 (250x122, 1-bit).
 
 Layout (see specs.md for full details):
+  - Top-left: play/pause icon (own line)
   - Top-right: dot circle (12 dots mimicking rotary knob) with mode icon centered inside
-  - Name line: play/pause icon + name (bold) + completion checkbox
+  - Name line: name (bold) + completion checkbox, width restricted to avoid dot circle
   - Title: up to 2 lines, word-wrapped, truncated with '...'
   - Progress bar: full width, bottom
 
@@ -54,33 +55,37 @@ HEIGHT = 122
 
 MARGIN = 7
 
-# Dot circle (top-right)
-DOT_CIRCLE_RADIUS = 22
+# Dot circle (top-right) — bigger radius, bigger dots
+DOT_CIRCLE_RADIUS = 25
 DOT_CIRCLE_CX = WIDTH - MARGIN - DOT_CIRCLE_RADIUS - 2
 DOT_CIRCLE_CY = MARGIN + DOT_CIRCLE_RADIUS + 2
-DOT_RADIUS_INACTIVE = 2
-DOT_RADIUS_ACTIVE = 4
+DOT_RADIUS_INACTIVE = 3
+DOT_RADIUS_ACTIVE = 5
 
-# Content area (below dot circle)
-NAME_Y = 48
-TITLE_Y = 68
-TITLE_LINE2_Y = 83
-BAR_Y = 102
+# Play/pause icon (top-left, own line above the name)
+PLAY_ICON_SIZE = 18
+PLAY_ICON_X = MARGIN
+PLAY_ICON_Y = MARGIN + 2
+
+# Name line (below play/pause icon)
+NAME_Y = 32
+
+# Title (below name)
+TITLE_Y = 52
+TITLE_LINE2_Y = 68
+
+# Progress bar
+BAR_Y = 96
 BAR_HEIGHT = 6
 BAR_WIDTH = WIDTH - 2 * MARGIN
 
-# Play/pause icon
-PLAY_ICON_SIZE = 12
-PLAY_ICON_X = MARGIN
-PLAY_ICON_Y = NAME_Y
-
 # Completion checkbox
-CHECK_SIZE = 9
-CHECK_GAP = 5  # gap between name text and checkbox
+CHECK_SIZE = 10
+CHECK_GAP = 4
 
-# Font sizes
-FONT_SIZE_NAME = 11
-FONT_SIZE_TITLE = 10
+# Font sizes — slightly larger for readability
+FONT_SIZE_NAME = 12
+FONT_SIZE_TITLE = 11
 
 # Full refresh interval (partial refreshes between full refreshes)
 FULL_REFRESH_INTERVAL = 50
@@ -241,6 +246,28 @@ class EinkDisplay:
         except Exception as e:
             log("DEBUG", f"Display cleanup: {e}")
 
+    # --- Layout helpers ----------------------------------------------------
+
+    def _max_text_width(self, text_y: int, text_height: int = 14) -> int:
+        """Return max text width at the given Y, shrinking if the dot circle is alongside.
+
+        Any text line that overlaps vertically with the dot circle bounding box
+        is shortened so it doesn't collide. Lines fully below the circle get
+        the full display width.
+        """
+        # Dot circle bounding box (with a small padding)
+        dot_top = DOT_CIRCLE_CY - DOT_CIRCLE_RADIUS - DOT_RADIUS_ACTIVE - 4
+        dot_bottom = DOT_CIRCLE_CY + DOT_CIRCLE_RADIUS + DOT_RADIUS_ACTIVE + 4
+        dot_left = DOT_CIRCLE_CX - DOT_CIRCLE_RADIUS - DOT_RADIUS_ACTIVE - 6
+
+        text_bottom = text_y + text_height
+        full_width = WIDTH - 2 * MARGIN
+
+        # If this text line overlaps vertically with the dot circle, restrict width
+        if text_bottom > dot_top and text_y < dot_bottom:
+            return dot_left - MARGIN
+        return full_width
+
     # --- Rendering ---------------------------------------------------------
 
     def _render(self, name, title, progress, knob_position, is_playing, is_completed, icon):
@@ -253,31 +280,33 @@ class EinkDisplay:
         if icon and icon in self._icons:
             self._paste_mode_icon(image, DOT_CIRCLE_CX, DOT_CIRCLE_CY, icon)
 
-        # 2. Play/pause icon + name + completion checkbox
+        # 2. Play/pause icon (top-left, own line)
         if is_playing:
             self._draw_play_icon(draw, PLAY_ICON_X, PLAY_ICON_Y)
         else:
             self._draw_pause_icon(draw, PLAY_ICON_X, PLAY_ICON_Y)
 
-        name_x = PLAY_ICON_X + PLAY_ICON_SIZE + 5
-        max_name_w = WIDTH - name_x - MARGIN - CHECK_SIZE - CHECK_GAP - 2
+        # 3. Name + completion checkbox (dynamically avoids dot circle)
+        max_name_w = self._max_text_width(NAME_Y) - CHECK_SIZE - CHECK_GAP - 2
         truncated_name = self._truncate_text(name, self._font_name, max_name_w)
-        draw.text((name_x, NAME_Y), truncated_name, font=self._font_name, fill=0)
+        draw.text((MARGIN, NAME_Y), truncated_name, font=self._font_name, fill=0)
 
         name_text_w = self._get_text_width(truncated_name, self._font_name)
-        check_x = name_x + name_text_w + CHECK_GAP
+        check_x = MARGIN + name_text_w + CHECK_GAP
         check_y = NAME_Y + 1
         self._draw_checkbox(draw, check_x, check_y, CHECK_SIZE, is_completed)
 
-        # 3. Title (up to 2 lines)
-        max_title_w = WIDTH - 2 * MARGIN
-        lines = self._wrap_text(title, self._font_title, max_title_w, max_lines=2)
+        # 4. Title (up to 2 lines, first line width-restricted if overlapping dot circle)
+        max_title_w_line1 = self._max_text_width(TITLE_Y)
+        max_title_w_line2 = self._max_text_width(TITLE_LINE2_Y)
+        lines = self._wrap_text_variable(title, self._font_title,
+                                         [max_title_w_line1, max_title_w_line2])
         if len(lines) >= 1:
             draw.text((MARGIN, TITLE_Y), lines[0], font=self._font_title, fill=0)
         if len(lines) >= 2:
             draw.text((MARGIN, TITLE_LINE2_Y), lines[1], font=self._font_title, fill=0)
 
-        # 4. Progress bar
+        # 5. Progress bar
         self._draw_progress_bar(draw, MARGIN, BAR_Y, BAR_WIDTH, BAR_HEIGHT, progress)
 
         return image
@@ -288,8 +317,8 @@ class EinkDisplay:
         """Draw 12 dots in a circle. Position 1 at 7 o'clock, clockwise to 12 at 6 o'clock.
 
         Screen coordinates: Y increases downward, so positive sin() goes down.
-        7 o'clock = 2π/3 radians from 3 o'clock (measured clockwise on screen).
-        Each step adds 2π/12 (30°) clockwise.
+        7 o'clock = 2pi/3 radians from 3 o'clock (measured clockwise on screen).
+        Each step adds 2pi/12 (30 deg) clockwise.
         """
         for i in range(1, 13):
             angle = (2.0 * math.pi / 3.0) + (i - 1) * (2.0 * math.pi / 12.0)
@@ -311,7 +340,6 @@ class EinkDisplay:
         icon_img = self._icons.get(icon_key)
         if icon_img is None:
             return
-        # Center the icon at (cx, cy)
         x = cx - icon_img.width // 2
         y = cy - icon_img.height // 2
         image.paste(icon_img, (x, y))
@@ -329,16 +357,13 @@ class EinkDisplay:
         s = PLAY_ICON_SIZE
         bar_w = max(s // 4, 2)
         gap = s // 5
-        # Left bar
         draw.rectangle([x + gap, y, x + gap + bar_w, y + s], fill=0)
-        # Right bar
         draw.rectangle([x + s - gap - bar_w, y, x + s - gap, y + s], fill=0)
 
     def _draw_checkbox(self, draw, x, y, size, checked):
         """Small checkbox: outline square, with checkmark if checked."""
         draw.rectangle([x, y, x + size, y + size], outline=0, fill=255, width=1)
         if checked:
-            # Checkmark as two lines
             draw.line(
                 [(x + 2, y + int(size * 0.52)), (x + int(size * 0.4), y + size - 2)],
                 fill=0,
@@ -353,11 +378,7 @@ class EinkDisplay:
     def _draw_progress_bar(self, draw, x, y, w, h, progress):
         """Outlined bar with black fill representing progress."""
         progress = max(0.0, min(1.0, progress))
-
-        # Outline
         draw.rectangle([x, y, x + w, y + h], outline=0, fill=255, width=1)
-
-        # Fill
         fill_w = int(w * progress)
         if fill_w > 0:
             draw.rectangle([x, y, x + fill_w, y + h], fill=0)
@@ -382,41 +403,64 @@ class EinkDisplay:
         return "..."
 
     def _wrap_text(self, text, font, max_width, max_lines=2):
-        """Break text into lines that fit within max_width.
+        """Break text into lines that fit within max_width (uniform width per line)."""
+        return self._wrap_text_variable(text, font, [max_width] * max_lines)
 
-        Words are kept whole when possible. The last line is truncated with
-        '...' if the text doesn't fit within max_lines.
+    def _wrap_text_variable(self, text, font, max_widths: list):
+        """Break text into lines where each line can have a different max width.
+
+        max_widths: list of pixel widths, one per allowed line.
+        Words are kept whole when possible. The last line is truncated with '...'
+        if the text doesn't fit.
         """
         if not text:
             return []
 
+        max_lines = len(max_widths)
         words = text.split()
         lines = []
         current = ""
+        word_idx = 0
 
-        for word in words:
+        while word_idx < len(words):
+            line_num = len(lines)
+            if line_num >= max_lines:
+                break
+
+            max_w = max_widths[line_num]
+            word = words[word_idx]
             test = f"{current} {word}".strip()
 
-            if self._get_text_width(test, font) <= max_width:
+            if self._get_text_width(test, font) <= max_w:
                 current = test
+                word_idx += 1
             else:
                 if current:
+                    # Current line is full, commit it
                     lines.append(current)
-                current = word
+                    current = ""
+                    # Don't advance word_idx — retry this word on the next line
+                else:
+                    # Single word too long for this line — truncate it
+                    if line_num >= max_lines - 1:
+                        # Last allowed line: truncate with remaining words
+                        remaining = " ".join(words[word_idx:])
+                        lines.append(self._truncate_text(remaining, font, max_w))
+                        return lines[:max_lines]
+                    else:
+                        lines.append(self._truncate_text(word, font, max_w))
+                        word_idx += 1
+                        current = ""
 
-                if len(lines) >= max_lines:
-                    # Ran out of lines — truncate whatever is left
-                    remaining = " ".join(words[words.index(word) :])
-                    lines[-1] = self._truncate_text(lines[-1] + " " + remaining, font, max_width)
-                    return lines[:max_lines]
-
-        # Add the last line being built
+        # Commit whatever is left
         if current and len(lines) < max_lines:
             lines.append(current)
 
-        # Truncate last line if a single long word overflows
+        # Truncate last line if it overflows
         if lines:
-            lines[-1] = self._truncate_text(lines[-1], font, max_width)
+            line_idx = len(lines) - 1
+            max_w = max_widths[min(line_idx, max_lines - 1)]
+            lines[-1] = self._truncate_text(lines[-1], font, max_w)
 
         return lines[:max_lines]
 
