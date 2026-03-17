@@ -18,6 +18,11 @@ from utils import log, set_led_controller
 # How often to refresh the e-ink progress bar during playback (seconds)
 DISPLAY_UPDATE_INTERVAL = 30
 
+# Rotary debounce needs multiple stable reads before we trust the position.
+# Poll this many times on startup so we don't act on the default (position 1).
+ROTARY_WARMUP_READS = 20
+ROTARY_WARMUP_INTERVAL = 0.05  # seconds between reads
+
 
 class PodcastPlayer:
     """Main controller for the podcast player system."""
@@ -593,6 +598,20 @@ class PodcastPlayer:
                 # Show preview of the selected position on the display
                 self._update_display_preview(podcast_index)
 
+    def _wait_for_rotary(self):
+        """Poll the rotary switch until debounce settles on a stable position.
+
+        The hardware debounce requires STABLE_READS consecutive identical
+        readings and DEBOUNCE_TIME between changes. On startup the default
+        position is 1, which is wrong if the knob is elsewhere. Polling here
+        lets the debounce lock onto the real position before we act on it.
+        """
+        log("DEBUG", "Waiting for rotary knob to settle...")
+        for _ in range(ROTARY_WARMUP_READS):
+            self.hardware.read_state()
+            time.sleep(ROTARY_WARMUP_INTERVAL)
+        log("DEBUG", f"Rotary settled on position {self.hardware.last_podcast_index}")
+
     def run(self):
         """Main event loop."""
         if self.hardware.is_available():
@@ -614,6 +633,11 @@ class PodcastPlayer:
             self.check_for_new_episodes()
 
         schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
+
+        # Let the rotary debounce settle before acting on the initial state.
+        # Without this, the default position (1) is used and immediately
+        # switched away once the real knob position is detected.
+        self._wait_for_rotary()
 
         last_state, last_podcast = self.hardware.read_state()
         self.handle_switch_change(last_state, last_podcast)
