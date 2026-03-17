@@ -265,6 +265,7 @@ class PodcastPlayer:
             stored = self.state.get_episode_duration(self.current_podcast_id, self.current_episode_index) if self.current_podcast_id is not None and self.current_episode_index is not None else 0.0
 
         if stored > 0:
+            log("DEBUG", f"Duration already known: {stored}s")
             return
 
         # Wait a bit after playback starts for VLC to parse the file
