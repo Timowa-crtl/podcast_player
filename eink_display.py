@@ -65,23 +65,23 @@ DOT_RADIUS_ACTIVE = 5
 # Play/pause icon (top-left, own line above the name)
 PLAY_ICON_SIZE = 18
 PLAY_ICON_X = MARGIN
-PLAY_ICON_Y = MARGIN + 2
+PLAY_ICON_Y = 13
 
-# Name line (below play/pause icon)
-NAME_Y = 32
+# Name line (below play/pause icon, tight gap)
+NAME_Y = 34
 
 # Title (below name)
-TITLE_Y = 52
-TITLE_LINE2_Y = 68
+TITLE_Y = 56
+TITLE_LINE2_Y = 72
 
 # Progress bar
-BAR_Y = 96
+BAR_Y = 100
 BAR_HEIGHT = 6
 BAR_WIDTH = WIDTH - 2 * MARGIN
 
 # Completion checkbox
 CHECK_SIZE = 10
-CHECK_GAP = 4
+CHECK_GAP = 3
 
 # Font sizes — slightly larger for readability
 FONT_SIZE_NAME = 12
@@ -152,7 +152,7 @@ class EinkDisplay:
     # --- Icon loading ------------------------------------------------------
 
     # Icon size — PNGs are resized to this square dimension to fit inside the dot circle
-    ICON_SIZE = 24
+    ICON_SIZE = 30
 
     def _load_icons(self, icons_dir: str):
         """Load 1-bit PNG icons from the icons directory.
