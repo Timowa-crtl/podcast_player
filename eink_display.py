@@ -63,12 +63,12 @@ DOT_RADIUS_INACTIVE = 3
 DOT_RADIUS_ACTIVE = 5
 
 # Play/pause icon (top-left, own line above the name)
-PLAY_ICON_SIZE = 18
+PLAY_ICON_SIZE = 20
 PLAY_ICON_X = MARGIN
-PLAY_ICON_Y = 13
+PLAY_ICON_Y = 14
 
 # Name line (below play/pause icon, tight gap)
-NAME_Y = 40
+NAME_Y = 46
 
 # Title (below name)
 TITLE_Y = 62
@@ -81,14 +81,14 @@ BAR_WIDTH = WIDTH - 2 * MARGIN
 
 # Completion checkbox
 CHECK_SIZE = 10
-CHECK_GAP = 3
+CHECK_GAP = 5
 
 # Font sizes — slightly larger for readability
-FONT_SIZE_NAME = 12
-FONT_SIZE_TITLE = 11
+FONT_SIZE_NAME = 14
+FONT_SIZE_TITLE = 12
 
 # Full refresh interval (partial refreshes between full refreshes)
-FULL_REFRESH_INTERVAL = 50
+FULL_REFRESH_INTERVAL = 100
 
 
 class EinkDisplay:
