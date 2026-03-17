@@ -90,6 +90,7 @@ class StateManager:
         podcast = self.get_podcast(podcast_id)
         if 0 <= episode_index < len(podcast["episodes"]):
             podcast["episodes"][episode_index]["completed"] = True
+            podcast["episodes"][episode_index]["ever_completed"] = True
             if episode_index + 1 < len(podcast["episodes"]):
                 podcast["current_index"] = episode_index + 1
             self.save(force=True)
@@ -106,6 +107,11 @@ class StateManager:
         total_time = existing.get("total_time", 0)
         # Preserve track duration if already stored
         track_duration = existing.get("current_track_duration", 0.0)
+        # Carry over ever_completed only if same album folder
+        if existing.get("folder") == folder:
+            ever_completed = existing.get("ever_completed", False)
+        else:
+            ever_completed = False
 
         self.state["music"][music_id] = {
             "folder": folder,
@@ -113,6 +119,7 @@ class StateManager:
             "current_track": current_track,
             "position": position,
             "completed": completed,
+            "ever_completed": ever_completed,
             "total_time": total_time,
             "current_track_duration": track_duration,
             "last_played": datetime.now().isoformat(),
@@ -148,14 +155,21 @@ class StateManager:
         ms = self.state["music"].get(music_id)
         if ms:
             ms["completed"] = True
+            ms["ever_completed"] = True
             ms["position"] = 0.0
             ms["current_track"] = 0
             self.save(force=True)
 
     def reset_music(self, music_id: str):
-        """Reset album state (for replay after completion)."""
-        if music_id in self.state["music"]:
-            del self.state["music"][music_id]
+        """Reset album state for replay. Preserves ever_completed and total_time."""
+        ms = self.state["music"].get(music_id)
+        if ms:
+            ms["completed"] = False
+            ms["current_track"] = 0
+            ms["position"] = 0.0
+            ms["tracks"] = []
+            ms["current_track_duration"] = 0.0
+            # folder, ever_completed, total_time, last_played preserved
             self.save(force=True)
 
     # --- Statistics ---

@@ -119,7 +119,7 @@ class PodcastPlayer:
         title = ep.get("title", "Unknown")
         position = ep.get("position", 0.0)
         duration = ep.get("duration", 0.0)
-        is_completed = ep.get("completed", False)
+        is_completed = ep.get("ever_completed", False)
 
         # Use live position if audio is active
         if self.audio.is_active():
@@ -154,7 +154,7 @@ class PodcastPlayer:
         track_idx = ms.get("current_track", 0)
         position = ms.get("position", 0.0)
         duration = ms.get("current_track_duration", 0.0)
-        is_completed = ms.get("completed", False)
+        is_completed = ms.get("ever_completed", False)
 
         if tracks and track_idx < len(tracks):
             title = tracks[track_idx]
@@ -216,7 +216,7 @@ class PodcastPlayer:
         self.display.show(
             name=name, title=ep.get("title", "Unknown"), progress=progress,
             knob_position=knob_position, is_playing=False,
-            is_completed=ep.get("completed", False), icon="podcast",
+            is_completed=ep.get("ever_completed", False), icon="podcast",
         )
 
     def _preview_album(self, knob_position: int):
@@ -247,7 +247,7 @@ class PodcastPlayer:
         self.display.show(
             name=name, title=title, progress=progress,
             knob_position=knob_position, is_playing=False,
-            is_completed=ms.get("completed", False), icon="music",
+            is_completed=ms.get("ever_completed", False), icon="music",
         )
 
     def _try_capture_duration(self):
