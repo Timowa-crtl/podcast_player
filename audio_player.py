@@ -19,7 +19,8 @@ class AudioPlayer:
         self.position_callback = position_callback
         self.save_interval = save_interval
 
-        self.instance = vlc.Instance("--aout=alsa")
+        # --no-video/--no-osd/--no-spu: disable unused subsystems to save CPU
+        self.instance = vlc.Instance("--aout=alsa", "--no-video", "--no-osd", "--no-spu")
         self.player: Optional[vlc.MediaPlayer] = None
         self.current_file: Optional[str] = None
         self._last_position = 0.0
