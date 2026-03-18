@@ -276,9 +276,11 @@ class EinkDisplay:
         draw = ImageDraw.Draw(image)
 
         # 1. Dot circle with mode icon (top-right)
-        self._draw_dot_circle(draw, DOT_CIRCLE_CX, DOT_CIRCLE_CY, DOT_CIRCLE_RADIUS, knob_position)
+        # 1.1 Mode icon FIRST (background layer)
         if icon and icon in self._icons:
             self._paste_mode_icon(image, DOT_CIRCLE_CX, DOT_CIRCLE_CY, icon)
+        # 1.2 Dot circle ON TOP (foreground layer)
+        self._draw_dot_circle(draw, DOT_CIRCLE_CX, DOT_CIRCLE_CY, DOT_CIRCLE_RADIUS, knob_position)
 
         # 2. Play/pause icon (top-left, own line)
         if is_playing:
