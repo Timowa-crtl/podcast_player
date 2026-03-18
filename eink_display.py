@@ -327,9 +327,9 @@ class EinkDisplay:
         Inactive dots are hollow, active dot is filled with its number inside.
         """
         dot_radius = 3
-        active_radius = 7
-        hollow_width = 2
-        font_size = 5
+        active_radius = 6
+        hollow_width = 1
+        font_size = 4
 
         try:
             num_font = ImageFont.truetype(self._font_path, font_size)
@@ -347,13 +347,7 @@ class EinkDisplay:
                     dx + active_radius, dy + active_radius],
                     fill=0, outline=0
                 )
-                text = str(i)
-                bbox = num_font.getbbox(text)
-                tw = bbox[2] - bbox[0]
-                th = bbox[3] - bbox[1]
-                tx = dx - tw / 2
-                ty = dy - th / 2 - bbox[1]
-                draw.text((tx, ty), text, font=num_font, fill=255)
+                draw.text((dx, dy), str(i), font=num_font, fill=255, anchor="mm")
             else:
                 draw.ellipse(
                     [dx - dot_radius, dy - dot_radius,
