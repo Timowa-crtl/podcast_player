@@ -15,8 +15,11 @@ from podcast_manager import PodcastManager
 from state_manager import StateManager
 from utils import log, set_led_controller
 
+# How often to poll in run-loop (seconds)
+POLL_INTERVAL = 0.2
+
 # How often to refresh the e-ink progress bar during playback (seconds)
-DISPLAY_UPDATE_INTERVAL = 30
+DISPLAY_UPDATE_INTERVAL = 10
 
 # Rotary debounce needs multiple stable reads before we trust the position.
 # Poll this many times on startup so we don't act on the default (position 1).
@@ -675,7 +678,7 @@ class PodcastPlayer:
                     self.handle_switch_change(state, podcast)
                     last_state, last_podcast = state, podcast
 
-                time.sleep(0.1)
+                time.sleep(POLL_INTERVAL)
         except KeyboardInterrupt:
             raise
 

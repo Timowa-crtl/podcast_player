@@ -9,7 +9,7 @@ import vlc
 
 from utils import log
 
-RESUME_END_THRESHOLD = 5  # seconds from end to restart from beginning
+RESUME_END_THRESHOLD = 9  # seconds from end to restart from beginning
 
 
 class AudioPlayer:
