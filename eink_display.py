@@ -221,7 +221,9 @@ class EinkDisplay:
             return
 
         try:
-            image = self._render(name, title, progress, knob_position, is_playing, is_completed, icon)
+            image = self._render(
+                name, title, progress, knob_position, is_playing, is_completed, icon
+            )
             self._display(image)
         except Exception as e:
             log("ERROR", f"Display show failed: {e}")
@@ -270,7 +272,9 @@ class EinkDisplay:
 
     # --- Rendering ---------------------------------------------------------
 
-    def _render(self, name, title, progress, knob_position, is_playing, is_completed, icon):
+    def _render(
+        self, name, title, progress, knob_position, is_playing, is_completed, icon
+    ):
         """Render all elements onto a 1-bit PIL Image."""
         image = Image.new("1", (WIDTH, HEIGHT), 255)
         draw = ImageDraw.Draw(image)
@@ -280,7 +284,9 @@ class EinkDisplay:
         if icon and icon in self._icons:
             self._paste_mode_icon(image, DOT_CIRCLE_CX, DOT_CIRCLE_CY, icon)
         # 1.2 Dot circle ON TOP (foreground layer)
-        self._draw_dot_circle(draw, DOT_CIRCLE_CX, DOT_CIRCLE_CY, DOT_CIRCLE_RADIUS, knob_position)
+        self._draw_dot_circle(
+            draw, DOT_CIRCLE_CX, DOT_CIRCLE_CY, DOT_CIRCLE_RADIUS, knob_position
+        )
 
         # 2. Play/pause icon (top-left, own line)
         if is_playing:
@@ -301,8 +307,9 @@ class EinkDisplay:
         # 4. Title (up to 2 lines, first line width-restricted if overlapping dot circle)
         max_title_w_line1 = self._max_text_width(TITLE_Y)
         max_title_w_line2 = self._max_text_width(TITLE_LINE2_Y)
-        lines = self._wrap_text_variable(title, self._font_title,
-                                         [max_title_w_line1, max_title_w_line2])
+        lines = self._wrap_text_variable(
+            title, self._font_title, [max_title_w_line1, max_title_w_line2]
+        )
         if len(lines) >= 1:
             draw.text((MARGIN, TITLE_Y), lines[0], font=self._font_title, fill=0)
         if len(lines) >= 2:
@@ -316,26 +323,52 @@ class EinkDisplay:
     # --- Drawing primitives ------------------------------------------------
 
     def _draw_dot_circle(self, draw, cx, cy, radius, active_position):
-        """Draw 12 dots in a circle. Position 1 at 7 o'clock, clockwise to 12 at 6 o'clock.
+        """Draw a dot circle with hollow inactive dots and a numbered active dot."""
+        num_dots = 12
+        dot_radius = 3  # inactive hollow dots
+        active_radius = 7  # active filled dot (fits number inside)
+        font_size = 7  # font for the number
 
-        Screen coordinates: Y increases downward, so positive sin() goes down.
-        7 o'clock = 2pi/3 radians from 3 o'clock (measured clockwise on screen).
-        Each step adds 2pi/12 (30 deg) clockwise.
-        """
-        for i in range(1, 13):
-            angle = (2.0 * math.pi / 3.0) + (i - 1) * (2.0 * math.pi / 12.0)
-            dx = cx + math.cos(angle) * radius
-            dy = cy + math.sin(angle) * radius
+        # Load a small font for the number
+        try:
+            num_font = ImageFont.truetype(self._font_path, font_size)
+        except Exception:
+            num_font = ImageFont.load_default()
 
-            if i == active_position:
-                r = DOT_RADIUS_ACTIVE
+        for i in range(num_dots):
+            angle = math.radians(i * (360 / num_dots) - 90)  # start from top
+            x = cx + radius * math.cos(angle)
+            y = cy + radius * math.sin(angle)
+            number = i + 1  # 1-indexed
+
+            if number == active_position:
+                # filled circle with number inside
+                draw.ellipse(
+                    [
+                        x - active_radius,
+                        y - active_radius,
+                        x + active_radius,
+                        y + active_radius,
+                    ],
+                    fill=0,
+                    outline=0,
+                )
+                # draw number in white (255 on 1-bit)
+                text = str(number)
+                bbox = num_font.getbbox(text)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+                tx = x - tw / 2
+                ty = y - th / 2 - bbox[1]
+                draw.text((tx, ty), text, font=num_font, fill=255)
             else:
-                r = DOT_RADIUS_INACTIVE
-
-            draw.ellipse(
-                [int(dx - r), int(dy - r), int(dx + r), int(dy + r)],
-                fill=0,
-            )
+                # hollow circle (outline only)
+                draw.ellipse(
+                    [x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius],
+                    fill=255,
+                    outline=0,
+                    width=1,
+                )
 
     def _paste_mode_icon(self, image, cx, cy, icon_key):
         """Paste a pre-loaded PNG icon centered at (cx, cy) inside the dot circle."""
@@ -606,7 +639,9 @@ def _demo():
         print("No e-ink display detected. Demo requires hardware.")
         return
 
-    print(f"Cycling {len(DEMO_SCREENS)} screens ({SHOW_DURATION_S}s each). Ctrl+C to stop.\n")
+    print(
+        f"Cycling {len(DEMO_SCREENS)} screens ({SHOW_DURATION_S}s each). Ctrl+C to stop.\n"
+    )
 
     try:
         display.clear()
