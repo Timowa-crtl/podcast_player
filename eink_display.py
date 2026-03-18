@@ -152,7 +152,7 @@ class EinkDisplay:
     # --- Icon loading ------------------------------------------------------
 
     # Icon size — PNGs are resized to this square dimension to fit inside the dot circle
-    ICON_SIZE = 30
+    ICON_SIZE = 40
 
     def _load_icons(self, icons_dir: str):
         """Load 1-bit PNG icons from the icons directory.
