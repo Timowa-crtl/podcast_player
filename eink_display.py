@@ -327,9 +327,9 @@ class EinkDisplay:
         Inactive dots are hollow, active dot is filled with its number inside.
         """
         dot_radius = 3
-        active_radius = 6
+        active_radius = 7
         hollow_width = 1
-        font_size = 4
+        font_size = 3
 
         try:
             num_font = ImageFont.truetype(self._font_path, font_size)
