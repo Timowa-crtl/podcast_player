@@ -323,51 +323,42 @@ class EinkDisplay:
     # --- Drawing primitives ------------------------------------------------
 
     def _draw_dot_circle(self, draw, cx, cy, radius, active_position):
-        """Draw a dot circle with hollow inactive dots and a numbered active dot."""
-        num_dots = 12
-        dot_radius = 3  # inactive hollow dots
-        active_radius = 7  # active filled dot (fits number inside)
-        font_size = 7  # font for the number
+        """Draw 12 dots in a circle. Position 1 at 7 o'clock, clockwise to 12 at 6 o'clock.
+        Inactive dots are hollow, active dot is filled with its number inside.
+        """
+        dot_radius = 3
+        active_radius = 7
+        hollow_width = 2
+        font_size = 5
 
-        # Load a small font for the number
         try:
             num_font = ImageFont.truetype(self._font_path, font_size)
         except Exception:
             num_font = ImageFont.load_default()
 
-        for i in range(num_dots):
-            angle = math.radians(i * (360 / num_dots) - 90)  # start from top
-            x = cx + radius * math.cos(angle)
-            y = cy + radius * math.sin(angle)
-            number = i + 1  # 1-indexed
+        for i in range(1, 13):
+            angle = (2.0 * math.pi / 3.0) + (i - 1) * (2.0 * math.pi / 12.0)
+            dx = cx + math.cos(angle) * radius
+            dy = cy + math.sin(angle) * radius
 
-            if number == active_position:
-                # filled circle with number inside
+            if i == active_position:
                 draw.ellipse(
-                    [
-                        x - active_radius,
-                        y - active_radius,
-                        x + active_radius,
-                        y + active_radius,
-                    ],
-                    fill=0,
-                    outline=0,
+                    [dx - active_radius, dy - active_radius,
+                    dx + active_radius, dy + active_radius],
+                    fill=0, outline=0
                 )
-                # draw number in white (255 on 1-bit)
-                text = str(number)
+                text = str(i)
                 bbox = num_font.getbbox(text)
                 tw = bbox[2] - bbox[0]
                 th = bbox[3] - bbox[1]
-                tx = x - tw / 2
-                ty = y - th / 2 - bbox[1]
+                tx = dx - tw / 2
+                ty = dy - th / 2 - bbox[1]
                 draw.text((tx, ty), text, font=num_font, fill=255)
             else:
-                # hollow circle (outline only)
                 draw.ellipse(
-                    [x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius],
-                    fill=255,
-                    outline=0,
-                    width=1,
+                    [dx - dot_radius, dy - dot_radius,
+                    dx + dot_radius, dy + dot_radius],
+                    fill=255, outline=0, width=hollow_width
                 )
 
     def _paste_mode_icon(self, image, cx, cy, icon_key):
