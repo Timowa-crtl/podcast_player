@@ -1,0 +1,23 @@
+{
+  // Editor
+  "editor.formatOnSave": true,
+
+  // Python formatting (Black + isort)
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "black-formatter.args": ["--line-length=200"],
+  "isort.args": ["--profile=black", "--line-length=200"],
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+
+  // Pylance
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportUndefinedVariable": "warning",
+    "reportMissingImports": "warning",
+    "reportGeneralTypeIssues": "warning"
+  }
+}
