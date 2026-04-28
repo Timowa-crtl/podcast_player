@@ -11,7 +11,7 @@ The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
 Download the STL files here:
 **[https://www.thingiverse.com/thing:7228464](https://www.thingiverse.com/thing:7228464)**
 
-## 1. Hardware Setup
+## Hardware Setup
 
 Connect your switches and let's go!
 
