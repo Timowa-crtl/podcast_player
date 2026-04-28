@@ -205,9 +205,13 @@ class PodcastPlayer:
 
         if not ps["episodes"]:
             self.display.show(
-                name=name, title="No episodes", progress=0.0,
-                knob_position=knob_position, is_playing=False,
-                is_completed=False, icon="podcast",
+                name=name,
+                title="No episodes",
+                progress=0.0,
+                knob_position=knob_position,
+                is_playing=False,
+                is_completed=False,
+                icon="podcast",
             )
             return
 
@@ -218,9 +222,13 @@ class PodcastPlayer:
         progress = position / duration if duration > 0 else 0.0
 
         self.display.show(
-            name=name, title=ep.get("title", "Unknown"), progress=progress,
-            knob_position=knob_position, is_playing=False,
-            is_completed=ep.get("ever_completed", False), icon="podcast",
+            name=name,
+            title=ep.get("title", "Unknown"),
+            progress=progress,
+            knob_position=knob_position,
+            is_playing=False,
+            is_completed=ep.get("ever_completed", False),
+            icon="podcast",
         )
 
     def _preview_album(self, knob_position: int):
@@ -235,9 +243,13 @@ class PodcastPlayer:
 
         if not ms:
             self.display.show(
-                name=name, title="Not started", progress=0.0,
-                knob_position=knob_position, is_playing=False,
-                is_completed=False, icon="music",
+                name=name,
+                title="Not started",
+                progress=0.0,
+                knob_position=knob_position,
+                is_playing=False,
+                is_completed=False,
+                icon="music",
             )
             return
 
@@ -249,9 +261,13 @@ class PodcastPlayer:
         progress = position / duration if duration > 0 else 0.0
 
         self.display.show(
-            name=name, title=title, progress=progress,
-            knob_position=knob_position, is_playing=False,
-            is_completed=ms.get("ever_completed", False), icon="music",
+            name=name,
+            title=title,
+            progress=progress,
+            knob_position=knob_position,
+            is_playing=False,
+            is_completed=ms.get("ever_completed", False),
+            icon="music",
         )
 
     def _capture_duration(self):
@@ -272,9 +288,7 @@ class PodcastPlayer:
                 log("DEBUG", f"Music track duration: {duration:.1f}s")
         else:
             if self.current_podcast_id is not None and self.current_episode_index is not None:
-                self.state.update_episode_duration(
-                    self.current_podcast_id, self.current_episode_index, duration
-                )
+                self.state.update_episode_duration(self.current_podcast_id, self.current_episode_index, duration)
                 log("DEBUG", f"Episode duration: {duration:.1f}s")
 
     # --- Position saving ---
@@ -303,10 +317,14 @@ class PodcastPlayer:
             elif self.current_podcast_id:
                 self._save_podcast_position(pos)
 
-    # --- Podcast mode (unchanged logic) ---
+    # --- Podcast mode ---
 
     def check_for_new_episodes(self):
         """Check RSS feeds for new episodes."""
+        if self.audio.is_playing():
+            log("INFO", f"Skipping check for new episodes because audio is playing.")
+            return
+
         log("INFO", f"[{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...")
         self.led.set_state(LEDState.REFRESHING)
 
@@ -646,7 +664,10 @@ class PodcastPlayer:
         else:
             self.check_for_new_episodes()
 
-        schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
+        # checking for new episodes only on full hours on the clock
+        # schedule.every(self.config.check_interval_hours).hours.do(self.check_for_new_episodes)
+        for h in range(0, 24, self.config.check_interval_hours):
+            schedule.every().day.at(f"{h:02d}:00").do(self.check_for_new_episodes)
 
         # Let the rotary debounce settle before acting on the initial state.
         # Without this, the default position (1) is used and immediately
