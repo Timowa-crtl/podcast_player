@@ -2,7 +2,7 @@
   "podcasts": [
     {
       "name": "Logbuch Netzpolitik",
-      "rss_url": "https://logbuch-netzpolitik.de/feed/mp3"
+      "rss_url": "https://feeds.metaebene.me/lnp/mp3"
     },
     {
       "name": "Fest und Flauschig",
@@ -26,7 +26,7 @@
     },
     {
       "name": "Hotel Matze",
-      "rss_url": "http://hotelmatze.podigee.io/feed/mp3"
+      "rss_url": "https://hotelmatze.podigee.io/feed/mp3"
     },
     {
       "name": "UKW (Unsere Kleine Welt)",
