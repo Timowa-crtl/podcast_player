@@ -12,8 +12,9 @@ from utils import log
 class PodcastManager:
     """Manages podcast episode fetching, downloading, and cleanup."""
 
-    def __init__(self, config):
+    def __init__(self, config, state_manager=None):
         self.config = config
+        self.state = state_manager
         self.episodes_dir = Path(config.episodes_dir)
         self.episodes_dir.mkdir(exist_ok=True)
 
@@ -23,16 +24,44 @@ class PodcastManager:
         d.mkdir(exist_ok=True)
         return d
 
-    def fetch_episodes(self, rss_url: str, count: int = 1):
-        """Fetch latest episodes from RSS feed."""
+    def fetch_episodes(self, rss_url: str, podcast_id: str = None, count: int = 1):
+        """Fetch latest episodes from RSS feed. Uses conditional GET if state_manager is available."""
         try:
+            headers = {"User-Agent": "PodcastPlayer/1.0"}
+
+            # Add conditional GET headers if we have cached values
+            cached = {}
+            if self.state and podcast_id:
+                cached = self.state.get_feed_cache(podcast_id)
+                if cached.get("etag"):
+                    headers["If-None-Match"] = cached["etag"]
+                if cached.get("last_modified"):
+                    headers["If-Modified-Since"] = cached["last_modified"]
+
             log("DEBUG", f"Fetching RSS: {rss_url[:50]}...")
             resp = requests.get(
                 rss_url,
                 timeout=self.config.rss_timeout,
-                headers={"User-Agent": "PodcastPlayer/1.0"},
+                headers=headers,
             )
+
+            # 304 Not Modified — feed unchanged
+            if resp.status_code == 304:
+                log("DEBUG", f"Feed unchanged (304)")
+                return []
+
             resp.raise_for_status()
+
+            # Save cache headers for next time
+            if self.state and podcast_id:
+                self.state.save_feed_cache(
+                    podcast_id,
+                    {
+                        "etag": resp.headers.get("ETag"),
+                        "last_modified": resp.headers.get("Last-Modified"),
+                    },
+                )
+
             log("DEBUG", f"RSS downloaded: {len(resp.content)} bytes")
             return self._parse_rss(resp.content, count)
         except requests.Timeout:

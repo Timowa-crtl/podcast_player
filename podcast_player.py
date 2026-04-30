@@ -39,7 +39,7 @@ class PodcastPlayer:
         set_led_controller(self.led)
 
         self.state = StateManager()
-        self.podcast_manager = PodcastManager(config)
+        self.podcast_manager = PodcastManager(config, state_manager=self.state)
         self.music_manager = MusicManager()
         self.audio = AudioPlayer(
             position_callback=self._save_position,
@@ -334,9 +334,9 @@ class PodcastPlayer:
             log("INFO", f"Checking: {pc['name']}")
 
             try:
-                episodes = self.podcast_manager.fetch_episodes(pc["rss_url"], count=1)
+                episodes = self.podcast_manager.fetch_episodes(pc["rss_url"], podcast_id=podcast_id, count=1)
                 if not episodes:
-                    log("WARNING", f"No episodes for {pc['name']}")
+                    log("DEBUG", f"No new episodes for {pc['name']}")
                     continue
                 if self._update_episodes(podcast_id, episodes):
                     updated += 1

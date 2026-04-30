@@ -24,11 +24,12 @@ class StateManager:
                     state = json.load(f)
                 state.setdefault("podcasts", {})
                 state.setdefault("music", {})
+                state.setdefault("feed_cache", {})
                 state.setdefault("last_check", 0)
                 return state
             except (json.JSONDecodeError, Exception) as e:
                 log("ERROR", f"Error loading state: {e}")
-        return {"version": 2, "podcasts": {}, "music": {}, "last_check": 0}
+        return {"version": 2, "podcasts": {}, "music": {}, "feed_cache": {}, "last_check": 0}
 
     def save(self, force: bool = False):
         """Save state to file (throttled unless forced)."""
@@ -40,6 +41,22 @@ class StateManager:
             self._last_save = time.time()
         except Exception as e:
             log("ERROR", f"Failed to save state: {e}")
+
+    # --- Feed cache (conditional GET) ---
+
+    def get_feed_cache(self, podcast_id: str) -> dict:
+        """Get cached HTTP headers for a podcast feed."""
+        return self.state["feed_cache"].get(podcast_id, {})
+
+    def save_feed_cache(self, podcast_id: str, cache: dict):
+        """Save HTTP cache headers (ETag, Last-Modified) for a podcast feed."""
+        # Only store non-None values
+        cleaned = {k: v for k, v in cache.items() if v is not None}
+        if cleaned:
+            self.state["feed_cache"][podcast_id] = cleaned
+        elif podcast_id in self.state["feed_cache"]:
+            del self.state["feed_cache"][podcast_id]
+        self.save()
 
     # --- Podcast state ---
 
