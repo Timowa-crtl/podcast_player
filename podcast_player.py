@@ -2,6 +2,7 @@
 
 import time
 from datetime import datetime
+from typing import Optional
 
 import schedule
 
@@ -27,7 +28,7 @@ ROTARY_WARMUP_READS = 20
 ROTARY_WARMUP_INTERVAL = 0.05  # seconds between reads
 
 # Deferred RSS check tuning
-IDLE_DEBOUNCE_SECONDS = 30          # audio must be idle this long before a deferred check runs
+IDLE_DEBOUNCE_SECONDS = 30  # audio must be idle this long before a deferred check runs
 MAX_STALENESS_SECONDS = 2.5 * 3600  # force a check despite playback if older than this
 
 
@@ -53,18 +54,18 @@ class PodcastPlayer:
         self.display = EinkDisplay()
 
         # Podcast state
-        self.current_podcast_id = None
-        self.current_episode_index = None
+        self.current_podcast_id: Optional[str] = None
+        self.current_episode_index: Optional[int] = None
 
         # Music state
-        self.current_music_id = None
-        self.current_music_album_path = None
-        self.current_music_tracks = None
-        self.current_music_track_index = None
+        self.current_music_id: Optional[str] = None
+        self.current_music_album_path: Optional[str] = None
+        self.current_music_tracks: Optional[list] = None
+        self.current_music_track_index: Optional[int] = None
 
         # Shared state
         self.current_mode = SwitchState.PAUSED
-        self.current_podcast_index = None
+        self.current_podcast_index: Optional[int] = None
 
         # Display timing
         self._last_display_update = 0.0
@@ -295,8 +296,13 @@ class PodcastPlayer:
                 self.state.update_music_track_duration(self.current_music_id, duration)
                 log("DEBUG", f"Music track duration: {duration:.1f}s")
         else:
-            if self.current_podcast_id is not None and self.current_episode_index is not None:
-                self.state.update_episode_duration(self.current_podcast_id, self.current_episode_index, duration)
+            if (
+                self.current_podcast_id is not None
+                and self.current_episode_index is not None
+            ):
+                self.state.update_episode_duration(
+                    self.current_podcast_id, self.current_episode_index, duration
+                )
                 log("DEBUG", f"Episode duration: {duration:.1f}s")
 
     # --- Position saving ---
@@ -309,12 +315,22 @@ class PodcastPlayer:
             self._save_podcast_position(position)
 
     def _save_podcast_position(self, position: float):
-        if self.current_podcast_id is not None and self.current_episode_index is not None:
-            self.state.update_position(self.current_podcast_id, self.current_episode_index, position)
+        if (
+            self.current_podcast_id is not None
+            and self.current_episode_index is not None
+        ):
+            self.state.update_position(
+                self.current_podcast_id, self.current_episode_index, position
+            )
 
     def _save_music_position(self, position: float):
-        if self.current_music_id is not None and self.current_music_track_index is not None:
-            self.state.update_music_position(self.current_music_id, self.current_music_track_index, position)
+        if (
+            self.current_music_id is not None
+            and self.current_music_track_index is not None
+        ):
+            self.state.update_music_position(
+                self.current_music_id, self.current_music_track_index, position
+            )
 
     def _save_current_position(self):
         """Save current playback position if audio is active."""
@@ -336,7 +352,10 @@ class PodcastPlayer:
         if self.audio.is_playing() and force:
             log("WARNING", "Forcing RSS check despite playback (last check too stale).")
 
-        log("INFO", f"[{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...")
+        log(
+            "INFO",
+            f"[{datetime.now().strftime('%H:%M:%S')}] Checking for new episodes...",
+        )
         self.led.set_state(LEDState.REFRESHING)
 
         updated = 0
@@ -345,7 +364,9 @@ class PodcastPlayer:
             log("INFO", f"Checking: {pc['name']}")
 
             try:
-                episodes = self.podcast_manager.fetch_episodes(pc["rss_url"], podcast_id=podcast_id, count=1)
+                episodes = self.podcast_manager.fetch_episodes(
+                    pc["rss_url"], podcast_id=podcast_id, count=1
+                )
                 if not episodes:
                     log("DEBUG", f"No new episodes for {pc['name']}")
                     continue
@@ -377,7 +398,15 @@ class PodcastPlayer:
                 self.led.set_state(LEDState.DOWNLOADING)
                 filename = self.podcast_manager.download_episode(ep, podcast_id)
                 if filename:
-                    new_eps.append({"title": ep["title"], "guid": ep["guid"], "file": filename, "position": 0.0, "duration": 0.0})
+                    new_eps.append(
+                        {
+                            "title": ep["title"],
+                            "guid": ep["guid"],
+                            "file": filename,
+                            "position": 0.0,
+                            "duration": 0.0,
+                        }
+                    )
                     updated = True
             else:
                 for existing in ps["episodes"]:
@@ -512,19 +541,28 @@ class PodcastPlayer:
         self.current_episode_index = None
 
         # Save initial state
-        self.state.save_music(music_id, album["folder"], tracks, track_idx, position, completed=False)
+        self.state.save_music(
+            music_id, album["folder"], tracks, track_idx, position, completed=False
+        )
 
         # Play the track
         self._play_music_track(track_idx, position)
 
     def _play_music_track(self, track_idx: int, position: float = 0.0):
         """Play a specific track from the current album."""
-        if not self.current_music_tracks or track_idx >= len(self.current_music_tracks):
+        if (
+            not self.current_music_tracks
+            or track_idx >= len(self.current_music_tracks)
+            or self.current_music_id is None
+            or self.current_music_album_path is None
+        ):
             log("ERROR", f"Invalid track index: {track_idx}")
             return
 
         filename = self.current_music_tracks[track_idx]
-        track_path = self.music_manager.get_track_path(self.current_music_album_path, filename)
+        track_path = self.music_manager.get_track_path(
+            self.current_music_album_path, filename
+        )
 
         if not track_path.exists():
             log("WARNING", f"Track file not found: {filename}, skipping")
@@ -547,7 +585,11 @@ class PodcastPlayer:
 
     def _advance_music_track(self):
         """Advance to next track, or mark album completed."""
-        if not self.current_music_tracks or self.current_music_track_index is None:
+        if (
+            not self.current_music_tracks
+            or self.current_music_track_index is None
+            or self.current_music_id is None
+        ):
             return
 
         next_idx = self.current_music_track_index + 1
@@ -584,7 +626,9 @@ class PodcastPlayer:
             return
 
         log("INFO", "Episode finished")
-        self.state.mark_episode_completed(self.current_podcast_id, self.current_episode_index)
+        self.state.mark_episode_completed(
+            self.current_podcast_id, self.current_episode_index
+        )
         self.audio.stop()
         self.led.set_state(LEDState.PAUSED)
         self._update_display()
@@ -611,7 +655,6 @@ class PodcastPlayer:
             # Save position before mode change
             self._save_current_position()
 
-            old_mode = self.current_mode
             self.current_mode = state
 
             if state == SwitchState.PAUSED:
@@ -707,9 +750,13 @@ class PodcastPlayer:
                         self._audio_idle_since is not None
                         and now - self._audio_idle_since >= IDLE_DEBOUNCE_SECONDS
                     )
-                    too_stale = now - self.state.get_last_check() >= MAX_STALENESS_SECONDS
+                    too_stale = (
+                        now - self.state.get_last_check() >= MAX_STALENESS_SECONDS
+                    )
                     if idle_long_enough or too_stale:
-                        self._check_deferred = False  # may be re-set inside check_for_new_episodes
+                        self._check_deferred = (
+                            False  # may be re-set inside check_for_new_episodes
+                        )
                         self.check_for_new_episodes(force=too_stale)
 
                 # Check for end-of-media (both podcast and music modes)
@@ -720,7 +767,11 @@ class PodcastPlayer:
                         self._on_episode_ended()
 
                 # Periodic display update for progress bar
-                if self.audio.is_playing() and time.time() - self._last_display_update > DISPLAY_UPDATE_INTERVAL:
+                if (
+                    self.audio.is_playing()
+                    and time.time() - self._last_display_update
+                    > DISPLAY_UPDATE_INTERVAL
+                ):
                     self._update_display()
 
                 state, podcast = self.hardware.read_state()

@@ -93,7 +93,12 @@ class HardwareController:
                 self._stable_count = 1
                 self._last_sample = raw
 
-            if self._stable_count >= STABLE_READS and raw > 0 and self._last_confirm != raw and now - self._last_confirm_time >= DEBOUNCE_TIME:
+            if (
+                self._stable_count >= STABLE_READS
+                and raw > 0
+                and self._last_confirm != raw
+                and now - self._last_confirm_time >= DEBOUNCE_TIME
+            ):
                 self._last_confirm = raw
                 self._last_confirm_time = now
                 self.last_podcast_index = raw

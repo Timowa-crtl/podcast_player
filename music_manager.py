@@ -70,7 +70,10 @@ class MusicManager:
 
             idx = position - 1
             if idx >= len(folders):
-                log("WARNING", f"No album folder for position {position} (only {len(folders)} found)")
+                log(
+                    "WARNING",
+                    f"No album folder for position {position} (only {len(folders)} found)",
+                )
                 return None
 
             folder = folders[idx]
@@ -91,7 +94,11 @@ class MusicManager:
             return []
 
         tracks = sorted(
-            [f.name for f in path.iterdir() if f.is_file() and f.suffix.lower() == ".mp3"],
+            [
+                f.name
+                for f in path.iterdir()
+                if f.is_file() and f.suffix.lower() == ".mp3"
+            ],
             key=natural_sort_key,
         )
 

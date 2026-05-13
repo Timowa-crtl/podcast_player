@@ -15,12 +15,16 @@ RESUME_END_THRESHOLD = 9  # seconds from end to restart from beginning
 class AudioPlayer:
     """VLC-based audio player with position tracking."""
 
-    def __init__(self, position_callback: Optional[Callable] = None, save_interval: int = 5):
+    def __init__(
+        self, position_callback: Optional[Callable] = None, save_interval: int = 5
+    ):
         self.position_callback = position_callback
         self.save_interval = save_interval
 
         # --no-video/--no-osd/--no-spu: disable unused subsystems to save CPU
-        self.instance = vlc.Instance("--aout=alsa", "--no-video", "--no-osd", "--no-spu")
+        self.instance = vlc.Instance(
+            "--aout=alsa", "--no-video", "--no-osd", "--no-spu"
+        )
         self.player: Optional[vlc.MediaPlayer] = None
         self.current_file: Optional[str] = None
         self._last_position = 0.0
@@ -78,7 +82,10 @@ class AudioPlayer:
             # Check if near end, restart if so
             duration = self._get_duration_internal()
             if duration > 0 and (duration - start_position) <= RESUME_END_THRESHOLD:
-                log("INFO", f"Near end ({duration - start_position:.1f}s left) → starting from beginning")
+                log(
+                    "INFO",
+                    f"Near end ({duration - start_position:.1f}s left) → starting from beginning",
+                )
                 start_position = 0.0
                 self._last_position = 0.0
 
@@ -88,7 +95,9 @@ class AudioPlayer:
             # Start position tracking
             if self.position_callback:
                 self._stop_tracking.clear()
-                self._track_thread = threading.Thread(target=self._track_position, daemon=True)
+                self._track_thread = threading.Thread(
+                    target=self._track_position, daemon=True
+                )
                 self._track_thread.start()
 
         except Exception as e:
@@ -153,7 +162,9 @@ class AudioPlayer:
 
     def is_playing(self) -> bool:
         """Return True if actively playing (not paused, not stopped)."""
-        return self.player is not None and not self._is_paused and self.player.is_playing()
+        return (
+            self.player is not None and not self._is_paused and self.player.is_playing()
+        )
 
     def is_active(self) -> bool:
         """Return True if player has media loaded (playing or paused)."""
@@ -162,7 +173,12 @@ class AudioPlayer:
     def _track_position(self):
         """Background thread: periodically call position callback."""
         while not self._stop_tracking.wait(self.save_interval):
-            if self.player and self.position_callback and self.current_file and not self._is_paused:
+            if (
+                self.player
+                and self.position_callback
+                and self.current_file
+                and not self._is_paused
+            ):
                 try:
                     self.position_callback(self.get_position())
                 except Exception as e:

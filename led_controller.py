@@ -86,13 +86,19 @@ class LEDController:
         elif state in (LEDState.PAUSED, LEDState.OFF):
             self._set(False, False)
         elif state in (LEDState.REFRESHING, LEDState.DOWNLOADING):
-            self._thread = Thread(target=self._blink, args=(LED_GREEN, 1.0), daemon=True)
+            self._thread = Thread(
+                target=self._blink, args=(LED_GREEN, 1.0), daemon=True
+            )
             self._thread.start()
         elif state == LEDState.ERROR:
-            self._thread = Thread(target=self._blink_n, args=(LED_RED, 5, 0.5), daemon=True)
+            self._thread = Thread(
+                target=self._blink_n, args=(LED_RED, 5, 0.5), daemon=True
+            )
             self._thread.start()
         elif state == LEDState.WARNING:
-            self._thread = Thread(target=self._blink_n, args=(LED_RED, 3, 0.3), daemon=True)
+            self._thread = Thread(
+                target=self._blink_n, args=(LED_RED, 3, 0.3), daemon=True
+            )
             self._thread.start()
 
     def _blink(self, pin: int, interval: float):

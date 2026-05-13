@@ -29,7 +29,13 @@ class StateManager:
                 return state
             except (json.JSONDecodeError, Exception) as e:
                 log("ERROR", f"Error loading state: {e}")
-        return {"version": 2, "podcasts": {}, "music": {}, "feed_cache": {}, "last_check": 0}
+        return {
+            "version": 2,
+            "podcasts": {},
+            "music": {},
+            "feed_cache": {},
+            "last_check": 0,
+        }
 
     def save(self, force: bool = False):
         """Save state to file (throttled unless forced)."""
@@ -76,11 +82,15 @@ class StateManager:
         podcast = self.get_podcast(podcast_id)
         if 0 <= episode_index < len(podcast["episodes"]):
             podcast["episodes"][episode_index]["position"] = position
-            podcast["episodes"][episode_index]["last_played"] = datetime.now().isoformat()
+            podcast["episodes"][episode_index][
+                "last_played"
+            ] = datetime.now().isoformat()
             podcast["total_time"] = podcast.get("total_time", 0) + 1
             self.save()
 
-    def update_episode_duration(self, podcast_id: str, episode_index: int, duration: float):
+    def update_episode_duration(
+        self, podcast_id: str, episode_index: int, duration: float
+    ):
         """Store the duration (seconds) of a podcast episode once known."""
         podcast = self.get_podcast(podcast_id)
         if 0 <= episode_index < len(podcast["episodes"]):
@@ -118,7 +128,15 @@ class StateManager:
         """Get music state for an album position. Returns dict or empty."""
         return self.state["music"].get(music_id, {})
 
-    def save_music(self, music_id: str, folder: str, tracks: list, current_track: int, position: float, completed: bool = False):
+    def save_music(
+        self,
+        music_id: str,
+        folder: str,
+        tracks: list,
+        current_track: int,
+        position: float,
+        completed: bool = False,
+    ):
         """Save full music state for an album position."""
         existing = self.state["music"].get(music_id, {})
         total_time = existing.get("total_time", 0)
@@ -194,13 +212,19 @@ class StateManager:
     def get_statistics(self):
         """Get listening statistics."""
         total_eps = sum(len(p["episodes"]) for p in self.state["podcasts"].values())
-        total_podcast_time = sum(p.get("total_time", 0) for p in self.state["podcasts"].values())
-        total_music_time = sum(m.get("total_time", 0) for m in self.state["music"].values())
+        total_podcast_time = sum(
+            p.get("total_time", 0) for p in self.state["podcasts"].values()
+        )
+        total_music_time = sum(
+            m.get("total_time", 0) for m in self.state["music"].values()
+        )
         total_time = total_podcast_time + total_music_time
 
         last_check = self.state.get("last_check", 0)
         if last_check > 0:
-            last_check_str = datetime.fromtimestamp(last_check).strftime("%Y-%m-%d %H:%M:%S")
+            last_check_str = datetime.fromtimestamp(last_check).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
         else:
             last_check_str = "Never"
 

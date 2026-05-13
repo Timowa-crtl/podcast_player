@@ -106,7 +106,9 @@ class PodcastManager:
             # Extract audio URL from enclosure
             enclosure = item.find("enclosure")
             if enclosure is None:
-                enclosure = item.find('{http://www.w3.org/2005/Atom}link[@rel="enclosure"]')
+                enclosure = item.find(
+                    '{http://www.w3.org/2005/Atom}link[@rel="enclosure"]'
+                )
 
             if enclosure is None:
                 log("DEBUG", f"No enclosure found for: {title}")
@@ -140,7 +142,9 @@ class PodcastManager:
 
     def download_episode(self, episode: dict, podcast_id: str):
         """Download episode audio file. Returns filename or None."""
-        filename = f"episode_{hashlib.md5(episode['guid'].encode()).hexdigest()[:12]}.mp3"
+        filename = (
+            f"episode_{hashlib.md5(episode['guid'].encode()).hexdigest()[:12]}.mp3"
+        )
         filepath = self.get_podcast_dir(podcast_id) / filename
 
         if filepath.exists():
@@ -170,7 +174,10 @@ class PodcastManager:
                             percent = (downloaded / total_size) * 100
                             if percent // 10 > last_percent:
                                 last_percent = percent // 10
-                                log("DEBUG", f"Download progress: {int(last_percent * 10)}%")
+                                log(
+                                    "DEBUG",
+                                    f"Download progress: {int(last_percent * 10)}%",
+                                )
 
             size_mb = filepath.stat().st_size / 1024 / 1024
             log("INFO", f"Downloaded: {filename} ({size_mb:.1f} MB)")

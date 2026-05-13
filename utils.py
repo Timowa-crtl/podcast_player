@@ -37,7 +37,12 @@ def log(level: str, message: str):
         return
 
     timestamp = datetime.now().strftime("%H:%M:%S")
-    colors = {"DEBUG": "\033[36m", "INFO": "\033[32m", "WARNING": "\033[33m", "ERROR": "\033[31m"}
+    colors = {
+        "DEBUG": "\033[36m",
+        "INFO": "\033[32m",
+        "WARNING": "\033[33m",
+        "ERROR": "\033[31m",
+    }
     reset = "\033[0m"
 
     if sys.stdout.isatty():

@@ -23,7 +23,9 @@ def main():
         music = MusicManager()
 
         # Config
-        print(f"\n📋 Config: {config.episodes_dir}, max {config.max_episodes}/podcast, check every {config.check_interval_hours}h")
+        print(
+            f"\n📋 Config: {config.episodes_dir}, max {config.max_episodes}/podcast, check every {config.check_interval_hours}h"
+        )
 
         # Podcasts
         print(f"\n📻 Podcasts ({len(config.podcasts)}):")
@@ -54,13 +56,21 @@ def main():
             for j, ep in enumerate(ps["episodes"]):
                 marker = "▶️" if j == curr else ("✅" if ep.get("completed") else "  ")
                 path = manager.get_episode_path(podcast_id, ep["file"])
-                size = format_file_size(path.stat().st_size) if path.exists() else "missing"
-                print(f"      {marker} {j+1}. {ep['title'][:40]} | {format_duration(ep.get('position', 0))} | {size}")
+                size = (
+                    format_file_size(path.stat().st_size)
+                    if path.exists()
+                    else "missing"
+                )
+                print(
+                    f"      {marker} {j+1}. {ep['title'][:40]} | {format_duration(ep.get('position', 0))} | {size}"
+                )
 
         # Music Albums
         albums = music.get_all_albums_info()
         album_source = "configured" if config.albums else "auto-discovered"
-        print(f"\n🎵 Music Albums ({len(albums)} {album_source}, base: {config.music_dir}):")
+        print(
+            f"\n🎵 Music Albums ({len(albums)} {album_source}, base: {config.music_dir}):"
+        )
 
         if not albums:
             print("   (none)")
@@ -90,18 +100,24 @@ def main():
                 current_file = tracks[track_idx] if track_idx < total else "?"
 
                 print(f"   {pos:2}. {name}")
-                print(f"       ▶️ Track {track_idx + 1}/{total} | {format_duration(position)} | {current_file}")
+                print(
+                    f"       ▶️ Track {track_idx + 1}/{total} | {format_duration(position)} | {current_file}"
+                )
 
         # Storage
         info = manager.get_storage_info()
-        print(f"\n💾 Storage: {info['episode_count']} files, {info['total_size_mb']:.1f} MB in {info['episodes_dir']}")
+        print(
+            f"\n💾 Storage: {info['episode_count']} files, {info['total_size_mb']:.1f} MB in {info['episodes_dir']}"
+        )
 
         # Disk space
         try:
             import shutil
 
             st = shutil.disk_usage(config.episodes_dir)
-            print(f"💿 Disk: {st.free / 1e9:.1f} GB free / {st.total / 1e9:.1f} GB ({st.used / st.total * 100:.0f}% used)")
+            print(
+                f"💿 Disk: {st.free / 1e9:.1f} GB free / {st.total / 1e9:.1f} GB ({st.used / st.total * 100:.0f}% used)"
+            )
         except:
             pass
 

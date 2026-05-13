@@ -343,16 +343,27 @@ class EinkDisplay:
 
             if i == active_position:
                 draw.ellipse(
-                    [dx - active_radius, dy - active_radius,
-                    dx + active_radius, dy + active_radius],
-                    fill=0, outline=0
+                    [
+                        dx - active_radius,
+                        dy - active_radius,
+                        dx + active_radius,
+                        dy + active_radius,
+                    ],
+                    fill=0,
+                    outline=0,
                 )
                 draw.text((dx, dy), str(i), font=num_font, fill=255, anchor="mm")
             else:
                 draw.ellipse(
-                    [dx - dot_radius, dy - dot_radius,
-                    dx + dot_radius, dy + dot_radius],
-                    fill=255, outline=0, width=hollow_width
+                    [
+                        dx - dot_radius,
+                        dy - dot_radius,
+                        dx + dot_radius,
+                        dy + dot_radius,
+                    ],
+                    fill=255,
+                    outline=0,
+                    width=hollow_width,
                 )
 
     def _paste_mode_icon(self, image, cx, cy, icon_key):
