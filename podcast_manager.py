@@ -3,6 +3,7 @@
 import hashlib
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Optional
 
 import requests
 
@@ -24,7 +25,7 @@ class PodcastManager:
         d.mkdir(exist_ok=True)
         return d
 
-    def fetch_episodes(self, rss_url: str, podcast_id: str = None, count: int = 1):
+    def fetch_episodes(self, rss_url: str, podcast_id: Optional[str] = None, count: int = 1):
         """Fetch latest episodes from RSS feed. Uses conditional GET if state_manager is available."""
         try:
             headers = {"User-Agent": "PodcastPlayer/1.0"}
