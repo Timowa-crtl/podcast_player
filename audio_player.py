@@ -22,9 +22,12 @@ class AudioPlayer:
         self.save_interval = save_interval
 
         # --no-video/--no-osd/--no-spu: disable unused subsystems to save CPU
-        self.instance = vlc.Instance(
+        instance = vlc.Instance(
             "--aout=alsa", "--no-video", "--no-osd", "--no-spu"
         )
+        if instance is None:
+            raise RuntimeError("Failed to initialize VLC instance")
+        self.instance = instance
         self.player: Optional[vlc.MediaPlayer] = None
         self.current_file: Optional[str] = None
         self._last_position = 0.0
@@ -69,14 +72,17 @@ class AudioPlayer:
         self._end_reached.clear()
 
         try:
-            self.player = self.instance.media_player_new()
-            self.player.set_media(self.instance.media_new(file_path))
+            player = self.instance.media_player_new()
+            if player is None:
+                raise RuntimeError("Failed to create VLC media player")
+            self.player = player
+            player.set_media(self.instance.media_new(file_path))
 
             # Attach end-of-media event
-            events = self.player.event_manager()
+            events = player.event_manager()
             events.event_attach(vlc.EventType.MediaPlayerEndReached, self._on_media_end)  # type: ignore
 
-            self.player.play()
+            player.play()
             time.sleep(0.1)
 
             # Check if near end, restart if so
@@ -104,7 +110,7 @@ class AudioPlayer:
             log("ERROR", f"Playback failed: {e}")
             self.stop()
 
-    def _on_media_end(self, event):
+    def _on_media_end(self, _event):
         """Called by VLC when media reaches end. Runs in VLC thread."""
         self._end_reached.set()
 
