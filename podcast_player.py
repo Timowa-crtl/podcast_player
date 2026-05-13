@@ -343,13 +343,17 @@ class PodcastPlayer:
 
     # --- Podcast mode ---
 
-    def check_for_new_episodes(self, force: bool = False):
+    def check_for_new_episodes(self):
         """Check RSS feeds for new episodes."""
-        if self.audio.is_playing() and not force:
+        too_stale = (
+            time.time() - self.state.get_last_check() >= MAX_STALENESS_SECONDS
+        )
+
+        if self.audio.is_playing() and not too_stale:
             log("INFO", "Skipping check (audio playing); will retry once idle.")
             self._check_deferred = True
             return
-        if self.audio.is_playing() and force:
+        if self.audio.is_playing() and too_stale:
             log("WARNING", "Forcing RSS check despite playback (last check too stale).")
 
         log(
@@ -376,6 +380,7 @@ class PodcastPlayer:
                 log("ERROR", f"Error checking {pc['name']}: {e}")
 
         self.state.set_last_check(time.time())
+        self._check_deferred = False
         log("INFO", f"Check complete. Updated {updated} podcast(s).")
         log("INFO", f"Next check in {self.config.check_interval_hours} hours")
 
@@ -743,21 +748,17 @@ class PodcastPlayer:
                 elif self._audio_idle_since is None:
                     self._audio_idle_since = time.time()
 
-                # If a check was deferred, retry when idle long enough or when too stale
+                # If a check was deferred, retry once audio has been idle long enough.
+                # check_for_new_episodes() re-evaluates staleness internally and may
+                # force a check even during playback.
                 if self._check_deferred:
-                    now = time.time()
                     idle_long_enough = (
                         self._audio_idle_since is not None
-                        and now - self._audio_idle_since >= IDLE_DEBOUNCE_SECONDS
+                        and time.time() - self._audio_idle_since
+                        >= IDLE_DEBOUNCE_SECONDS
                     )
-                    too_stale = (
-                        now - self.state.get_last_check() >= MAX_STALENESS_SECONDS
-                    )
-                    if idle_long_enough or too_stale:
-                        self._check_deferred = (
-                            False  # may be re-set inside check_for_new_episodes
-                        )
-                        self.check_for_new_episodes(force=too_stale)
+                    if idle_long_enough:
+                        self.check_for_new_episodes()
 
                 # Check for end-of-media (both podcast and music modes)
                 if self.audio.has_ended():
