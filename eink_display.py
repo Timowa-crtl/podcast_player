@@ -98,6 +98,7 @@ class EinkDisplay:
         self.available = False
         self._partial_count = 0
         self._icons = {}
+        self._font_path: Optional[str] = None
 
         if not DISPLAY_AVAILABLE:
             log("DEBUG", "E-ink display not available")
@@ -142,7 +143,10 @@ class EinkDisplay:
         for path in candidates:
             if os.path.exists(path):
                 try:
-                    return ImageFont.truetype(path, size)
+                    font = ImageFont.truetype(path, size)
+                    if self._font_path is None:
+                        self._font_path = path
+                    return font
                 except Exception:
                     continue
 
@@ -175,7 +179,9 @@ class EinkDisplay:
                 continue
             try:
                 img = Image.open(icon_file).convert("1")
-                img = img.resize((self.ICON_SIZE, self.ICON_SIZE), Image.NEAREST)
+                img = img.resize(
+                    (self.ICON_SIZE, self.ICON_SIZE), Image.Resampling.NEAREST
+                )
                 self._icons[name] = img
                 log("DEBUG", f"Loaded icon: {name} ({self.ICON_SIZE}x{self.ICON_SIZE})")
             except Exception as e:
@@ -331,9 +337,12 @@ class EinkDisplay:
         hollow_width = 1
         font_size = 3
 
-        try:
-            num_font = ImageFont.truetype(self._font_path, font_size)
-        except Exception:
+        if self._font_path:
+            try:
+                num_font = ImageFont.truetype(self._font_path, font_size)
+            except Exception:
+                num_font = ImageFont.load_default()
+        else:
             num_font = ImageFont.load_default()
 
         for i in range(1, 13):
