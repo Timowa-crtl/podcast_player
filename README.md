@@ -12,6 +12,13 @@ Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:72
 
 <img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
 
+## Hardware Setup
+
+- [HARDWARE.md](HARDWARE.md) — bill of materials (Pi model, switches, LEDs, e-ink, enclosure, wiring supplies)
+- [WIRING.md](WIRING.md) — GPIO pin assignments for the rotary switch, mode switch, LEDs, and optional e-ink display
+
+**Audio output:** the recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio. This keeps the box self-contained and turns any radio into the speaker.
+
 ## Installation
 
 1. **Clone the repository**
@@ -41,13 +48,6 @@ Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:72
    - Install extras: `sudo apt install python3-spidev python3-numpy`
    - The `waveshare_epd` driver is vendored in this repo — no separate install needed
    - If `PIL` or `waveshare_epd` is missing, the display is silently disabled and the rest of the player works normally
-
-## Hardware Setup
-
-- [HARDWARE.md](HARDWARE.md) — bill of materials (Pi model, switches, LEDs, e-ink, enclosure, wiring supplies)
-- [WIRING.md](WIRING.md) — GPIO pin assignments for the rotary switch, mode switch, LEDs, and optional e-ink display
-
-**Audio output:** the recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio. This keeps the box self-contained and turns any radio into the speaker.
 
 ## Configuration
 
