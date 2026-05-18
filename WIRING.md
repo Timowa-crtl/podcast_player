@@ -2,7 +2,7 @@
 
 All pin numbers are **BCM GPIO** (not physical header positions). Use a Raspberry Pi pinout reference (e.g. `pinout` command or [pinout.xyz](https://pinout.xyz)) to map BCM numbers to physical pins.
 
-All inputs use the Pi's internal pull-ups and are **active-low** — wire one side of each switch contact to the GPIO pin and the other side to **GND**.
+I use dupont wires (no soldering) to keep things flexible.
 
 ## 12-Position Rotary Switch
 
@@ -59,7 +59,7 @@ Requires SPI enabled (`sudo raspi-config` → Interface Options → SPI).
 
 ## Audio Output
 
-Audio is played through ALSA — use the Pi's 3.5mm jack, HDMI, or a USB DAC. No GPIO wiring needed.
+Audio is played through ALSA — use the Pi's 3.5mm jack.
 
 ## Test the Wiring
 
