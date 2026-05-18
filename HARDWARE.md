@@ -4,7 +4,7 @@ Bill of materials for building the player. For how to wire them up, see [WIRING.
 
 ## Compute
 
-- **Raspberry Pi 3 B+** — recommended (best CPU + wireless of the supported models, fits the enclosure)
+- **Raspberry Pi 3 B+** — that's what i use
 - Also compatible: Raspberry Pi 3 B, Pi 2 B, Pi 1 B+ — any model with a 40-pin GPIO header works; older models still play audio fine since the workload is light
 - **MicroSD card** — 16 GB or larger, Class 10 / A1 rated, for the Raspberry Pi OS install
 
@@ -21,13 +21,12 @@ Bill of materials for building the player. For how to wire them up, see [WIRING.
 
 ### Status LEDs
 
-- **2× 5 mm LEDs** — one red, one green (3 mm also works if the enclosure cutout matches)
-- **2× current-limiting resistors**, 220–470 Ω (one per LED)
+- **2× 3 mm LEDs** — one red, one green
+- **2× current-limiting resistors**, 1000 Ω
 
 ### Audio Output (recommended)
 
-- **3.5 mm in-car FM transmitter with LCD** — plugs into the Pi's 3.5 mm aux output and broadcasts on an FM frequency you tune your radio to. This is the recommended setup: the podcast-box stays small and self-contained, and any nearby FM radio becomes the speaker.
-- Alternative: a powered speaker or USB DAC + amplifier directly on the 3.5 mm jack.
+- **3.5 mm in-car FM transmitter** — plugs into the Pi's 3.5 mm aux output and broadcasts on an FM frequency you tune your radio to. This is the recommended setup: the podcast-box stays small and self-contained, and any nearby FM radio becomes the speaker.
 
 ### E-Ink Display (optional)
 
@@ -37,8 +36,7 @@ Bill of materials for building the player. For how to wire them up, see [WIRING.
 ## Connections & Prototyping
 
 - **T-type GPIO breakout board for Raspberry Pi** — with 40-pin ribbon cable, to bring the Pi header onto a breadboard or prototype board
-- **Breadboard** — 830-point full-size or 400-point half-size, for first-pass wiring before soldering
-- **Stripboard / Veroboard** — 6.5 × 14.5 cm, for the final soldered build (LED resistors, common ground rail, switch connections)
+- **Breadboard** - must fit breakout board and cables and fit into the enclosure
 - **Dupont jumper wires** — 20-pin assorted set with M-M, F-M, and F-F (Pi header → breakout → switches/LEDs)
 
 ## Enclosure
