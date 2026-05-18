@@ -2,6 +2,8 @@
 
 A reliable, minimalistic, hardware-controlled podcast and music player designed to run on Raspberry Pi.
 
+<img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
+
 ## How it works
 
 - A **12-position rotary knob** selects one of up to 12 podcast feeds (Podcast mode) or up to 12 album folders (Music mode).
@@ -34,8 +36,6 @@ See:
 A custom 3D-printed enclosure designed for this project. The enclosure includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+. The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
 
 Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:7228464)**, or grab them from [`enclosure/`](enclosure/).
-
-<img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
 
 ## Installation
 
