@@ -121,3 +121,15 @@ python3 hardware.py
    ```bash
    tail -f ~/podcast_player/podcast.log
    ```
+
+## Gallery
+
+<img src="pictures/raspi_box_the_box.png" width="600" alt="enclosure box render">
+
+<img src="pictures/raspi_box_top_plate.png" width="600" alt="top plate render">
+
+<img src="pictures/raspi_inside.jpg" width="600" alt="Raspberry Pi wired inside the enclosure">
+
+<img src="pictures/red_and_wood.jpg" width="600" alt="finished player, red knob with wood top">
+
+<img src="pictures/wood_top.jpg" width="600" alt="wood top plate detail">
