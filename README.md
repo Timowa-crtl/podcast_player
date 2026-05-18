@@ -8,12 +8,9 @@ A custom enclosure designed specifically for this project.
 The box includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+.
 The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
 
-Download the STL files from Thingiverse:
-**[https://www.thingiverse.com/thing:7228464](https://www.thingiverse.com/thing:7228464)**
+Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:7228464)**, or grab them from [`enclosure/`](enclosure/).
 
-The same files are also available in [`enclosure/`](enclosure/).
-
-![frontview of 3D-printed enclosure](/pictures/podcast_box_front.png)
+<img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
 
 ## Installation
 
@@ -76,6 +73,8 @@ python3 hardware.py
 ```
 
 ### Autostart Service Setup
+
+To autostart the podcast_player whenever booting the Raspi, i recommend to create a systemctl-service as follows:
 
 1. Create `/etc/systemd/system/podcast.service` with:
 
