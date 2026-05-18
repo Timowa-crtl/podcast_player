@@ -1,23 +1,41 @@
 # Raspberry Pi Podcast Player
 
-A reliable, minimalistic, hardware-controlled podcast player designed to run on Raspberry Pi
+A reliable, minimalistic, hardware-controlled podcast and music player designed to run on Raspberry Pi.
 
-## 3D-Printed Enclosure
+## How it works
 
-A custom enclosure designed specifically for this project.
-The box includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+.
-The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
+- A **12-position rotary knob** selects one of up to 12 podcast feeds (Podcast mode) or up to 12 album folders (Music mode).
+- A **3-position mode switch** toggles between **Podcast / Paused / Music**.
+- Audio plays through **VLC → ALSA** out of the Pi's 3.5 mm jack.
+- Two **status LEDs** show what the player is doing (green = playing or activity, red = warning/error).
+- An optional **Waveshare 2.13″ e-ink display** shows the current podcast/album, episode title, and a progress bar.
+- Playback position is **auto-saved**, so switching modes or rebooting resumes where you left off.
+- New podcast episodes are fetched **hourly**, pinned to clock hours (`HH:00`).
+
+## Hardware
+
+The player needs:
+
+- A Raspberry Pi (3 B/B+, 2 B, or 1 B+ — anything with a 3.5 mm audio jack)
+- A 12-position rotary switch (one GPIO per position, active-low)
+- A 3-position toggle switch for the mode
+- Two LEDs (red + green) with current-limiting resistors
+- _(Optional)_ a Waveshare 2.13″ V2/V3 e-ink HAT
+
+See:
+
+- **[HARDWARE.md](HARDWARE.md)** — full bill of materials (Pi model, switches, LEDs, e-ink, enclosure, wiring supplies)
+- **[WIRING.md](WIRING.md)** — GPIO pin assignments for the rotary switch, mode switch, LEDs, and optional e-ink display
+
+**Audio output:** the recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio. This keeps the box self-contained and turns any radio into the speaker.
+
+## Enclosure
+
+A custom 3D-printed enclosure designed for this project. The enclosure includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+. The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
 
 Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:7228464)**, or grab them from [`enclosure/`](enclosure/).
 
 <img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
-
-## Hardware Setup
-
-- [HARDWARE.md](HARDWARE.md) — bill of materials (Pi model, switches, LEDs, e-ink, enclosure, wiring supplies)
-- [WIRING.md](WIRING.md) — GPIO pin assignments for the rotary switch, mode switch, LEDs, and optional e-ink display
-
-**Audio output:** the recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio. This keeps the box self-contained and turns any radio into the speaker.
 
 ## Installation
 
@@ -46,35 +64,39 @@ Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:72
 4. **(Optional) E-ink display setup**
    - Enable SPI: `sudo raspi-config` → Interface Options → SPI → Enable
    - Install extras: `sudo apt install python3-spidev python3-numpy`
-   - The `waveshare_epd` driver is vendored in this repo — no separate install needed
-   - If `PIL` or `waveshare_epd` is missing, the display is silently disabled and the rest of the player works normally
+   - The `waveshare_epd` driver is vendored in this repo — no separate install needed.
+   - If `PIL` or `waveshare_epd` is missing, the display is silently disabled and the rest of the player works normally.
 
 ## Configuration
 
-Edit `config.json` to customize
+Edit `config.json` to customize your podcasts, albums and settings.
 
 ## Usage
 
-### Basic Operation
+### Run the player
 
-1. **Start the player:** `python3 main.py`
-2. **Stop:** Press Ctrl+C
+```bash
+python3 main.py                  # start the player (Ctrl+C to stop)
+```
 
-### Check Status
+### Inspect state
 
 ```bash
 python3 status.py
 ```
 
-### Test Hardware
+### Hardware smoke tests
+
+Run these directly on the Pi to verify wiring:
 
 ```bash
-python3 hardware.py
+python3 hardware.py          # poll the rotary + mode switch, prints state to stdout
+python3 led_controller.py    # cycle through every LED state
 ```
 
-### Autostart Service Setup
+## Autostart with systemd
 
-To autostart the podcast_player whenever booting the Raspi, i recommend to create a systemctl-service as follows:
+To run the player on boot, create a systemd service. Replace `<your-user>` with your Linux username (e.g. `pi`).
 
 1. Create `/etc/systemd/system/podcast.service` with:
 
@@ -84,13 +106,13 @@ To autostart the podcast_player whenever booting the Raspi, i recommend to creat
    After=network.target
 
    [Service]
-   ExecStart=/usr/bin/python3 -u /home/user/podcast_player/main.py
-   WorkingDirectory=/home/user/podcast_player
-   User=user
+   ExecStart=/usr/bin/python3 -u /home/<your-user>/podcast_player/main.py
+   WorkingDirectory=/home/<your-user>/podcast_player
+   User=<your-user>
    Restart=always
 
-   StandardOutput=append:/home/user/podcast_player/podcast.log
-   StandardError=append:/home/user/podcast_player/podcast.log
+   StandardOutput=append:/home/<your-user>/podcast_player/podcast.log
+   StandardError=append:/home/<your-user>/podcast_player/podcast.log
 
    [Install]
    WantedBy=multi-user.target
