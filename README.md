@@ -13,9 +13,43 @@ Download the STL files here:
 
 ![frontview of 3D-printed enclosure](/pictures/podcast_box_front.png)
 
+## Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/Timowa-crtl/podcast_player.git
+   cd podcast_player
+   ```
+
+2. **Install system dependencies**
+
+   ```bash
+   sudo apt update
+   sudo apt install vlc
+   ```
+
+3. **Install Python packages** (system-wide via apt)
+
+   ```bash
+   sudo apt install python3-requests python3-schedule python3-vlc python3-pil python3-rpi.gpio
+   ```
+
+   If `python3-schedule` is unavailable on your Raspberry Pi OS release, fall back to `sudo pip install schedule`.
+
+4. **(Optional) E-ink display setup**
+
+   - Enable SPI: `sudo raspi-config` → Interface Options → SPI → Enable
+   - Install extras: `sudo apt install python3-spidev python3-numpy`
+   - The `waveshare_epd` driver is vendored in this repo — no separate install needed
+   - If `PIL` or `waveshare_epd` is missing, the display is silently disabled and the rest of the player works normally
+
 ## Hardware Setup
 
-Connect your switches and let's go!
+- [HARDWARE.md](HARDWARE.md) — bill of materials (Pi model, switches, LEDs, e-ink, enclosure, wiring supplies)
+- [WIRING.md](WIRING.md) — GPIO pin assignments for the rotary switch, mode switch, LEDs, and optional e-ink display
+
+**Audio output:** the recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio. This keeps the box self-contained and turns any radio into the speaker.
 
 ## Configuration
 
