@@ -2,7 +2,7 @@
 
 A reliable, minimalistic, hardware-controlled podcast and music player designed to run on Raspberry Pi.
 
-<img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
+<img src="pictures/podcast_box_front.png" width="350" alt="frontview of 3D-printed enclosure">
 
 ## How it works
 
@@ -144,13 +144,9 @@ To run the player on boot, create a systemd service. Replace `<your-user>` with 
    ```
 
 ## Gallery
-
+<img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
 <img src="pictures/raspi_box_the_box.png" width="600" alt="enclosure box render">
-
 <img src="pictures/raspi_box_top_plate.png" width="600" alt="top plate render">
-
 <img src="pictures/raspi_inside.jpg" width="600" alt="Raspberry Pi wired inside the enclosure">
-
 <img src="pictures/red_and_wood.jpg" width="600" alt="finished player, red knob with wood top">
-
 <img src="pictures/wood_top.jpg" width="600" alt="wood top plate detail">
