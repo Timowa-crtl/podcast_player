@@ -8,8 +8,10 @@ A custom enclosure designed specifically for this project.
 The box includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+.
 The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
 
-Download the STL files here:
+Download the STL files from Thingiverse:
 **[https://www.thingiverse.com/thing:7228464](https://www.thingiverse.com/thing:7228464)**
+
+The same files are also available in [`enclosure/`](enclosure/).
 
 ![frontview of 3D-printed enclosure](/pictures/podcast_box_front.png)
 
@@ -38,7 +40,6 @@ Download the STL files here:
    If `python3-schedule` is unavailable on your Raspberry Pi OS release, fall back to `sudo pip install schedule`.
 
 4. **(Optional) E-ink display setup**
-
    - Enable SPI: `sudo raspi-config` → Interface Options → SPI → Enable
    - Install extras: `sudo apt install python3-spidev python3-numpy`
    - The `waveshare_epd` driver is vendored in this repo — no separate install needed
