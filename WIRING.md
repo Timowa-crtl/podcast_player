@@ -2,7 +2,9 @@
 
 All pin numbers are **BCM GPIO** (not physical header positions). Use a Raspberry Pi pinout reference (e.g. `pinout` command or [pinout.xyz](https://pinout.xyz)) to map BCM numbers to physical pins.
 
-I use dupont wires (no soldering) to keep things flexible.
+I used dupont wires (no soldering).
+
+> ⚠️ **Disclaimer:** Please confirm pin positions against the source files: `hardware.py`, `led_controller.py`, and `eink_display.py`.
 
 ## 12-Position Rotary Switch
 
