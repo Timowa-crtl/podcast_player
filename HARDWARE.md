@@ -4,9 +4,8 @@ Bill of materials for building the player. For how to wire them up, see [WIRING.
 
 ## Compute
 
-- **Raspberry Pi 3 B+** — that's what i use
-- Also compatible: Raspberry Pi 3 B, Pi 2 B, Pi 1 B+ — any model with a 40-pin GPIO header works; older models still play audio fine since the workload is light
-- **MicroSD card** — 16 GB or larger, Class 10 / A1 rated, for the Raspberry Pi OS install
+- Raspberry Pi 3 B, Pi 2 B, Pi 1 B+. Any model with a 40-pin GPIO header should work.
+- **MicroSD card** — 16 GB or larger
 
 ## Controls
 
@@ -22,16 +21,16 @@ Bill of materials for building the player. For how to wire them up, see [WIRING.
 ### Status LEDs
 
 - **2× 3 mm LEDs** — one red, one green
-- **2× current-limiting resistors**, 1000 Ω
+- **resistor** — 1000 Ω 
 
 ### Audio Output (recommended)
 
-- **3.5 mm in-car FM transmitter** — plugs into the Pi's 3.5 mm aux output and broadcasts on an FM frequency you tune your radio to. This is the recommended setup: the podcast-box stays small and self-contained, and any nearby FM radio becomes the speaker.
+- **3.5 mm in-car FM transmitter** — plugs into the Pi's 3.5 mm aux output and broadcasts on an FM frequency you tune your radio to. This my recommended setup. Feel free to adapt!
 
 ### E-Ink Display (optional)
 
 - **Waveshare 2.13" e-Paper HAT (V4)** — 250×122, SPI interface
-  - The vendored driver in `waveshare_epd/` targets the V4 specifically; older V1/V2/V3 panels will need a different driver
+  - The vendored driver in `waveshare_epd/` targets the V4 specifically; older V1/V2/V3 panels might need a different driver
 
 ## Connections & Prototyping
 
