@@ -1,6 +1,6 @@
 # KnobFM
 
-Turn your Raspberry Pi into a tactile podcast and music player. Assign podcasts and albums to fixed knob positions — turn to select, flip to play.
+Turn your Raspberry Pi into a tactile podcast and music player. Assign your podcasts and albums to fixed knob positions — turn to select, flip to play.
 
 <img src="pictures/podcast_box_front.png" width="300" alt="frontview of 3D-printed enclosure">
 
