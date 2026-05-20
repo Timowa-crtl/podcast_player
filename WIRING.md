@@ -37,7 +37,7 @@ Common pole to **GND**. The two outer positions connect to GPIO pins; the center
 
 ## LEDs
 
-Wire each LED anode (long leg) to the GPIO pin through a **current-limiting resistor** (220–470 Ω typical). Cathode (short leg) to **GND**.
+You can wire both LED cathodes (short leg) through a single **1000 Ω resistor** to **GND**. Anodes (long leg) connect directly to their GPIO pins.
 
 | LED   | BCM GPIO |
 | ----- | -------- |
