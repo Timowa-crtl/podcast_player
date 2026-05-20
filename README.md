@@ -2,23 +2,24 @@
 
 A reliable, minimalistic, hardware-controlled podcast and music player designed to run on Raspberry Pi.
 
-<img src="pictures/podcast_box_front.png" width="350" alt="frontview of 3D-printed enclosure">
+<img src="pictures/podcast_box_front.png" width="300" alt="frontview of 3D-printed enclosure">
 
 ## How it works
 
 - A **12-position rotary knob** selects one of up to 12 podcast feeds (Podcast mode) or up to 12 album folders (Music mode).
 - A **3-position mode switch** toggles between **Podcast / Paused / Music**.
+- Playback position is **auto-saved**, so switching modes or rebooting resumes where you left off.
 - Audio plays through **VLC → ALSA** out of the Pi's 3.5 mm jack.
 - Two **status LEDs** show what the player is doing (green = playing or activity, red = warning/error).
+- New podcast episodes are fetched **hourly**.
 - An optional **Waveshare 2.13″ e-ink display** shows the current podcast/album, episode title, and a progress bar.
-- Playback position is **auto-saved**, so switching modes or rebooting resumes where you left off.
-- New podcast episodes are fetched **hourly**, pinned to clock hours (`HH:00`).
+
 
 ## Hardware
 
 The player needs:
 
-- A Raspberry Pi (3 B/B+, 2 B, or 1 B+ — anything with a 3.5 mm audio jack)
+- A Raspberry Pi (3 B/B+, 2 B, or 1 B+)
 - A 12-position rotary switch (one GPIO per position, active-low)
 - A 3-position toggle switch for the mode
 - Two LEDs (red + green) with current-limiting resistors
@@ -29,11 +30,11 @@ See:
 - **[HARDWARE.md](HARDWARE.md)** — full bill of materials (Pi model, switches, LEDs, e-ink, enclosure, wiring supplies)
 - **[WIRING.md](WIRING.md)** — GPIO pin assignments for the rotary switch, mode switch, LEDs, and optional e-ink display
 
-**Audio output:** the recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio. This keeps the box self-contained and turns any radio into the speaker.
+**Audio output:** My recommended setup is a 3.5 mm in-car FM transmitter plugged into the Pi's aux output, broadcasting to a nearby FM radio.
 
 ## Enclosure
 
-A custom 3D-printed enclosure designed for this project. The enclosure includes a mounting point and port cutouts compatible with Raspberry Pi 3 (B/B+), Pi 2 B, and Pi 1 B+. The lid features cutouts for a 3-way switch, an R26 turning knob, and two LEDs.
+A 3D-printed enclosure designed for this project. The enclosure includes a mounting point and port cutouts. The lid features cutouts for the 3-way switch, R26 turning knob, and two LEDs.
 
 Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:7228464)**, or grab them from [`enclosure/`](enclosure/).
 
