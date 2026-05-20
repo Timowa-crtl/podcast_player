@@ -1,6 +1,6 @@
-# Raspberry Pi Podcast Player
+# KnobFM
 
-A reliable, minimalistic, hardware-controlled podcast and music player designed to run on Raspberry Pi.
+Turn your Raspberry Pi into a tactile podcast and music player. Assign podcasts and albums to fixed knob positions — turn to select, flip to play.
 
 <img src="pictures/podcast_box_front.png" width="300" alt="frontview of 3D-printed enclosure">
 
@@ -145,6 +145,7 @@ To run the player on boot, create a systemd service. Replace `<your-user>` with 
    ```
 
 ## Gallery
+
 <img src="pictures/podcast_box_front.png" width="600" alt="frontview of 3D-printed enclosure">
 <img src="pictures/raspi_box_the_box.png" width="600" alt="enclosure box render">
 <img src="pictures/raspi_box_top_plate.png" width="600" alt="top plate render">
