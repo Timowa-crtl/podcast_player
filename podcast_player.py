@@ -1,6 +1,7 @@
 """Main podcast player controller coordinating all components."""
 
 import time
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -315,13 +316,16 @@ class PodcastPlayer:
             self._save_podcast_position(position)
 
     def _save_podcast_position(self, position: float):
-        if (
-            self.current_podcast_id is not None
-            and self.current_episode_index is not None
-        ):
-            self.state.update_position(
-                self.current_podcast_id, self.current_episode_index, position
-            )
+        if self.current_podcast_id is None or self.current_episode_index is None:
+            return
+        ps = self.state.get_podcast(self.current_podcast_id)
+        idx = self.current_episode_index
+        if idx >= len(ps["episodes"]):
+            return
+        loaded = self.audio.current_file
+        if loaded and os.path.basename(loaded) != ps["episodes"][idx]["file"]:
+            return  # stale index: loaded file is not this episode
+        self.state.update_position(self.current_podcast_id, idx, position)
 
     def _save_music_position(self, position: float):
         if (
@@ -345,9 +349,7 @@ class PodcastPlayer:
 
     def check_for_new_episodes(self):
         """Check RSS feeds for new episodes."""
-        too_stale = (
-            time.time() - self.state.get_last_check() >= MAX_STALENESS_SECONDS
-        )
+        too_stale = time.time() - self.state.get_last_check() >= MAX_STALENESS_SECONDS
 
         if self.audio.is_playing() and not too_stale:
             log("INFO", "Skipping check (audio playing); will retry once idle.")
