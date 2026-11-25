@@ -72,6 +72,14 @@ Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:72
 
 Edit `config.json` to customize your podcasts, albums and settings.
 
+### Web editor
+
+While the player runs, feeds, the music folder and albums can be edited from any browser in your local network at **http://knob.local:8080** (or `http://<pi-ip>:8080`). Each of the 12 rows is a knob position; leave a row blank for an empty slot. Changes apply without restarting; the previous config is kept as `config.json.bak`.
+
+- For the `knob.local` name, set the Pi's hostname to `knob` (`sudo raspi-config` → System Options → Hostname). Raspberry Pi OS resolves `<hostname>.local` via avahi out of the box.
+- Change the port with `"web_port"` in `config.json`; `0` disables the editor. There is no login, so only use it on a trusted network.
+- `python3 web_config.py` starts the editor on its own, without the player.
+
 ## Usage
 
 ### Run the player

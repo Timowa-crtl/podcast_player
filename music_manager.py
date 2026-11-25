@@ -48,11 +48,11 @@ class MusicManager:
         if albums:
             # Configured albums: position maps to list index
             idx = position - 1
-            if idx >= len(albums):
-                log("WARNING", f"No album configured for position {position}")
+            entry = albums[idx] if idx < len(albums) else None
+            if not entry:
+                log("INFO", f"No album configured for position {position}")
                 return None
 
-            entry = albums[idx]
             folder = entry.get("folder", "")
             name = entry.get("name", folder)
             path = music_dir / folder
@@ -120,6 +120,8 @@ class MusicManager:
 
         if albums:
             for i, entry in enumerate(albums[:12]):
+                if not entry:
+                    continue  # empty slot
                 folder = entry.get("folder", "")
                 name = entry.get("name", folder)
                 path = music_dir / folder

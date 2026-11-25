@@ -25,6 +25,7 @@ Add a music playback mode to the Raspberry Pi Podcast Player. The 3-position swi
 - `albums`: list of up to 12 entries, mapped to knob positions 1-12 in order
 - `folder`: required, relative to `music_dir`
 - `name`: optional display name override. **Default**: folder name
+- An entry may be `null`: an **empty slot** (silent, display shows "Empty slot"). Later albums keep their knob positions.
 
 ### Album discovery fallback
 
