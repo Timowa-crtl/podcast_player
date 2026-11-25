@@ -49,21 +49,7 @@
       "rss_url": "https://feeds.simplecast.com/EmVW7VGp"
     }
   ],
-  "music_dir": "/home/tweckerle/music",
-  "albums": [
-    { "folder": "Radiohead - (1997) OK Computer", "name": "OK Computer" },
-    { "folder": "Serj Tankian - Elect the Dead", "name": "Elect the Dead" },
-    { "folder": "Linkin Park - Meteora", "name": "Meteora" },
-    { "folder": "Jack Johnson -The Mango Tree", "name": "The Mango Tree" },
-    { "folder": "MTV Unplugged In New York", "name": "MTV Unplugged In New York" },
-    { "folder": "K.I.Z. - Sexismus Gegen Rechts" },
-    { "folder": "Muse - The Resistance 2009", "name": "The Resistance" },
-    { "folder": "Farin Urlaub - Die Wahrheit übers Lügen", "name": "Die Wahrheit übers Lügen" },
-    { "folder": "Foo Fighters - Echoes, Silence, Patience & Grace", "name": "Echoes, Silence..." },
-    { "folder": "Metallica - Death Magnetic", "name": "Death Magnetic" },
-    { "folder": "MGMT - Oracular Spectacular [2008]", "name": "Oracular Spectacular" },
-    { "folder": "Deichkind - Aufstand Im Schlaraffenland 2006", "name": "Aufstand Im Schlaraffenland" }
-  ],
+  "albums": [],
   "episodes_dir": "episodes",
   "max_episodes_per_podcast": 2,
   "check_interval_hours": 1,

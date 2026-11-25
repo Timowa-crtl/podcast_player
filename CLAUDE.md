@@ -48,6 +48,8 @@ Podcast and music modes share `AudioPlayer` and `StateManager`, but each has its
 
 ### Config (`config.json`)
 
+`config.json` is gitignored and user-owned. The tracked preset is `config.default.json`; `config.ensure_config()` (called by `Config.__init__`) copies it to `config.json` when that file is missing. Change shipped defaults in `config.default.json`, never by committing `config.json`.
+
 - `podcasts`: 1–12 entries, mapped to knob positions in list order. Required. Entries may be `null` (empty slot) — use `config.podcast(n)` rather than indexing `config.podcasts` directly.
 - `albums`: 0–12 entries, mapped to knob positions in list order, `null` = empty slot. Optional — empty means auto-discover folders under `music_dir`.
 - `web_port`: web editor port (default 8080, `0` disables).
@@ -58,5 +60,5 @@ Defaults live in `config.py:DEFAULTS`. Validation (`config.validate`, shared wit
 ## Conventions
 
 - Logging goes through `utils.log(level, message)` — never `print()` for status. ERROR/WARNING auto-flash the red LED.
-- `state.json` and `episodes/` are runtime artifacts, gitignored. Don't commit them.
+- `config.json`, `state.json` and `episodes/` are local/runtime files, gitignored. Don't commit them.
 - Specifications in `podcast_mode_specification.md`, `music_mode_specification.md`, and `eink_specification.md` are the source of truth for behavior — consult them before changing semantics.

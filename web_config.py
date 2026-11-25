@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Callable, Optional
 from urllib.parse import parse_qs
 
-from config import DEFAULTS, MAX_SLOTS, validate
+from config import DEFAULTS, MAX_SLOTS, ensure_config, validate
 from music_manager import natural_sort_key
 from utils import log
 
@@ -287,6 +287,7 @@ if __name__ == "__main__":
     # Standalone: edit config.json without running the player.
     import time
 
+    ensure_config()
     try:
         port = json.loads(Path("config.json").read_text()).get("web_port", DEFAULTS["web_port"])
     except (OSError, ValueError):

@@ -70,7 +70,7 @@ Download the STL files from **[Thingiverse](https://www.thingiverse.com/thing:72
 
 ## Configuration
 
-Edit `config.json` to customize your podcasts, albums and settings.
+The repo ships a preset, `config.default.json`, with 12 podcasts; albums are auto-discovered from `~/music`. On first start the player copies it to `config.json`, which is yours: it is not tracked by git, so your edits never conflict with a `git pull`. Edit `config.json` (or use the web editor below) to customize your podcasts, albums and settings. To go back to the preset, delete `config.json` and restart.
 
 ### Web editor
 

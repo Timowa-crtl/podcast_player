@@ -10,6 +10,8 @@ The Raspberry Pi Podcast Player supports up to 12 podcast feeds mapped to the 12
 
 ### config.json
 
+`config.json` is local and gitignored. If it is missing on startup, it is created as a copy of the tracked preset `config.default.json` (12 podcasts, albums auto-discovered from `~/music`).
+
 ```json
 {
   "podcasts": [

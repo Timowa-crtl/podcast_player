@@ -1,7 +1,13 @@
 """Configuration loader with validation."""
 
 import json
+import shutil
 from pathlib import Path
+
+from utils import log
+
+# Tracked preset; copied to the (gitignored) config.json on first start
+DEFAULT_CONFIG_FILE = "config.default.json"
 
 DEFAULTS = {
     "episodes_dir": "episodes",
@@ -17,6 +23,15 @@ DEFAULTS = {
 }
 
 MAX_SLOTS = 12
+
+
+def ensure_config(config_file: str = "config.json"):
+    """Create config_file from the preset if it does not exist yet."""
+    path = Path(config_file)
+    default = path.with_name(DEFAULT_CONFIG_FILE)
+    if not path.exists() and default.exists():
+        shutil.copyfile(default, path)
+        log("INFO", f"Created {path} from {default}")
 
 
 def validate(data: dict):
@@ -51,6 +66,7 @@ class Config:
 
     def __init__(self, config_file: str = "config.json"):
         self.path = Path(config_file)
+        ensure_config(config_file)
         self._data = self._load()
 
     def _load(self) -> dict:

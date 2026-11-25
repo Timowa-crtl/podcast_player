@@ -3,6 +3,7 @@ podcast.log
 state.json
 episodes/
 nohup.out
+config.json
 config.json.bak
 config.json.tmp
 
