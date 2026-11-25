@@ -1,7 +1,9 @@
 """Main podcast player controller coordinating all components."""
 
-import time
+import json
 import os
+import threading
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -16,6 +18,7 @@ from music_manager import MusicManager
 from podcast_manager import PodcastManager
 from state_manager import StateManager
 from utils import log, set_led_controller
+from web_config import WebConfigServer
 
 # How often to poll in run-loop (seconds)
 POLL_INTERVAL = 0.2
@@ -53,6 +56,13 @@ class PodcastPlayer:
         )
         self.hardware = HardwareController()
         self.display = EinkDisplay()
+        self.web = WebConfigServer(
+            config.web_port,
+            config_path=str(config.path),
+            on_saved=self.request_config_reload,
+        )
+        # Set by the web thread; consumed by the main loop
+        self._config_reload_requested = threading.Event()
 
         # Podcast state
         self.current_podcast_id: Optional[str] = None
@@ -111,9 +121,10 @@ class PodcastPlayer:
 
         # Get podcast name from config
         idx = int(self.current_podcast_id.split("_")[1]) - 1
-        if idx < 0 or idx >= len(self.config.podcasts):
+        entry = self.config.podcast(idx + 1)
+        if not entry:
             return
-        name = self.config.podcasts[idx]["name"]
+        name = entry["name"]
 
         # Get episode info from state
         ps = self.state.get_podcast(self.current_podcast_id)
@@ -205,11 +216,12 @@ class PodcastPlayer:
 
     def _preview_podcast(self, knob_position: int):
         """Show podcast preview while paused."""
-        idx = knob_position - 1
-        if idx < 0 or idx >= len(self.config.podcasts):
+        entry = self.config.podcast(knob_position)
+        if not entry:
+            self._show_empty_slot(knob_position, "podcast")
             return
 
-        name = self.config.podcasts[idx]["name"]
+        name = entry["name"]
         podcast_id = f"podcast_{knob_position}"
         ps = self.state.get_podcast(podcast_id)
 
@@ -245,6 +257,7 @@ class PodcastPlayer:
         """Show album preview while paused."""
         album = self.music_manager.get_album_for_position(knob_position)
         if not album:
+            self._show_empty_slot(knob_position, "music")
             return
 
         music_id = f"music_{knob_position}"
@@ -279,6 +292,21 @@ class PodcastPlayer:
             is_completed=ms.get("ever_completed", False),
             icon="music",
         )
+
+    def _show_empty_slot(self, knob_position: int, icon: str):
+        """Show that nothing is configured at this knob position."""
+        if not self.display.available:
+            return
+        self.display.show(
+            name="Empty slot",
+            title="Nothing configured at this position",
+            progress=0.0,
+            knob_position=knob_position,
+            is_playing=False,
+            is_completed=False,
+            icon=icon,
+        )
+        self._last_display_update = time.time()
 
     def _capture_duration(self):
         """Read duration from VLC and store it. Called once right after play().
@@ -366,6 +394,8 @@ class PodcastPlayer:
 
         updated = 0
         for idx, pc in enumerate(self.config.podcasts):
+            if not pc:
+                continue  # empty slot
             podcast_id = f"podcast_{idx + 1}"
             log("INFO", f"Checking: {pc['name']}")
 
@@ -431,12 +461,24 @@ class PodcastPlayer:
 
     def switch_to_podcast(self, podcast_index: int):
         """Switch to podcast by index (1-12)."""
-        if podcast_index < 1 or podcast_index > len(self.config.podcasts):
+        if podcast_index < 1 or podcast_index > 12:
             log("WARNING", f"Invalid podcast: {podcast_index}")
             return
 
+        entry = self.config.podcast(podcast_index)
+        if not entry:
+            log("INFO", f"No podcast configured for position {podcast_index}")
+            self.audio.stop()
+            self.current_podcast_id = None
+            self.current_podcast_index = podcast_index
+            self.current_episode_index = None
+            self.current_music_id = None
+            self.led.set_state(LEDState.PAUSED)
+            self._show_empty_slot(podcast_index, "podcast")
+            return
+
         podcast_id = f"podcast_{podcast_index}"
-        name = self.config.podcasts[podcast_index - 1]["name"]
+        name = entry["name"]
         log("INFO", f"Switching to podcast {podcast_index}: {name}")
 
         self.audio.stop()
@@ -491,8 +533,10 @@ class PodcastPlayer:
         album = self.music_manager.get_album_for_position(knob_position)
         if not album:
             log("WARNING", f"No album for position {knob_position}")
+            self._save_current_position()
             self.audio.stop()
             self.led.set_state(LEDState.PAUSED)
+            self._show_empty_slot(knob_position, "music")
             return
 
         music_id = f"music_{knob_position}"
@@ -640,6 +684,55 @@ class PodcastPlayer:
         self.led.set_state(LEDState.PAUSED)
         self._update_display()
 
+    # --- Config reload (web editor) ---
+
+    def request_config_reload(self):
+        """Called from the web server thread after config.json was saved."""
+        self._config_reload_requested.set()
+
+    def _reload_config(self):
+        """Apply a changed config.json. Runs on the main thread.
+
+        Albums need nothing here: MusicManager re-reads config.json on every
+        knob turn. Podcast slots whose feed URL changed (or were emptied) lose
+        their episodes, and a new RSS check fetches the new feeds.
+        """
+        old = [self.config.podcast(n) for n in range(1, 13)]
+        try:
+            self.config.reload()
+        except (OSError, ValueError, json.JSONDecodeError) as e:
+            log("ERROR", f"Config reload failed, keeping old config: {e}")
+            return
+
+        changed = [
+            n
+            for n in range(1, 13)
+            if (old[n - 1] or {}).get("rss_url")
+            != (self.config.podcast(n) or {}).get("rss_url")
+        ]
+        log("INFO", f"Config reloaded; podcast feeds changed in slots: {changed or 'none'}")
+
+        for n in changed:
+            podcast_id = f"podcast_{n}"
+            if self.current_podcast_id == podcast_id:
+                self.audio.stop()
+                self.current_podcast_id = None
+                self.current_episode_index = None
+            self.state.reset_podcast(podcast_id)
+            self.podcast_manager.cleanup_old_episodes(podcast_id, [])
+
+        if changed:
+            self.check_for_new_episodes()
+
+        # Refresh what's on screen / playing for the current knob position
+        knob = self.current_podcast_index
+        if self.current_mode == SwitchState.PLAYING and knob in changed:
+            self.switch_to_podcast(knob)
+        elif self.current_mode == SwitchState.PAUSED and knob:
+            self._update_display_preview(knob)
+        else:
+            self._update_display()
+
     # --- Shared controls ---
 
     def pause(self):
@@ -714,6 +807,7 @@ class PodcastPlayer:
             log("WARNING", "⚠️ Software-only mode (no GPIO)")
         print("=" * 60)
 
+        self.web.start()
         self.led.startup_test()
 
         # Clear display on startup (full refresh)
@@ -743,6 +837,10 @@ class PodcastPlayer:
         try:
             while True:
                 schedule.run_pending()
+
+                if self._config_reload_requested.is_set():
+                    self._config_reload_requested.clear()
+                    self._reload_config()
 
                 # Track how long audio has been idle, for deferred RSS checks
                 if self.audio.is_playing():
@@ -789,6 +887,7 @@ class PodcastPlayer:
     def cleanup(self):
         """Clean up all resources."""
         log("INFO", "Cleaning up...")
+        self.web.stop()
         self._save_current_position()
         self.audio.cleanup()
         self.hardware.cleanup()

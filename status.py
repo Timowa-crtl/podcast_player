@@ -28,9 +28,9 @@ def main():
         )
 
         # Podcasts
-        print(f"\n📻 Podcasts ({len(config.podcasts)}):")
+        print(f"\n📻 Podcasts ({sum(1 for p in config.podcasts if p)}):")
         for i, p in enumerate(config.podcasts, 1):
-            print(f"   {i}. {p['name']}")
+            print(f"   {i}. {p['name'] if p else '(empty)'}")
 
         # Stats
         stats = state.get_statistics()
@@ -44,6 +44,8 @@ def main():
         # Podcast Episodes
         print("\n📚 Podcast Episodes:")
         for i, pc in enumerate(config.podcasts):
+            if not pc:
+                continue
             podcast_id = f"podcast_{i + 1}"
             ps = state.get_podcast(podcast_id)
             print(f"\n   {pc['name']}:")

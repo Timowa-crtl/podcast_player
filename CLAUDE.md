@@ -12,6 +12,7 @@ Hardware-controlled podcast and music player for Raspberry Pi. A 12-position rot
 python3 main.py                  # Run the player (Ctrl+C to stop)
 python3 main.py --skip-check     # Run without the initial RSS check on startup
 python3 status.py                # Print current state, episodes, storage, disk
+python3 web_config.py            # Run the web config editor standalone (port 8080)
 python3 hardware.py              # Smoke-test the GPIO switch wiring
 python3 led_controller.py        # Smoke-test the LEDs
 pip install -r requirements.txt  # Install deps (RPi.GPIO only installs on ARM)
@@ -29,6 +30,7 @@ There is no test suite. Component scripts (`hardware.py`, `led_controller.py`) d
 - **`music_manager.py`** — Album discovery. Re-reads `config.json` on every knob turn so albums can be reconfigured without restart. Falls back to alphabetical scan of `music_dir` when `albums` is empty. Natural-sorts tracks (`2-foo.mp3` before `10-foo.mp3`).
 - **`state_manager.py`** — Persists everything to `state.json` (gitignored). Save calls are throttled to ≤1/sec unless `force=True`. Top-level keys: `podcasts`, `music`, `feed_cache`, `last_check`. Podcast state is keyed by `podcast_<n>`; music state by `music_<n>`.
 - **`led_controller.py`** — Owns LED state machine. `utils.log()` automatically triggers `WARNING`/`ERROR` LED patterns via a global reference set in `set_led_controller()`.
+- **`web_config.py`** — stdlib `http.server` config editor (podcasts, `music_dir`, albums) started as a daemon thread by `PodcastPlayer.run`. After an atomic save it calls `request_config_reload()`, which only sets an Event; the main loop then runs `_reload_config()` so all player mutation stays on the main thread.
 - **`eink_display.py`** — Optional. Disabled silently if `PIL` or `waveshare_epd` is missing. Uses partial refreshes with a full refresh every 100 updates.
 
 ### Main loop responsibilities (`PodcastPlayer.run`)
@@ -46,11 +48,12 @@ Podcast and music modes share `AudioPlayer` and `StateManager`, but each has its
 
 ### Config (`config.json`)
 
-- `podcasts`: 1–12 entries, mapped to knob positions in list order. Required.
-- `albums`: 0–12 entries, mapped to knob positions in list order. Optional — empty means auto-discover folders under `music_dir`.
+- `podcasts`: 1–12 entries, mapped to knob positions in list order. Required. Entries may be `null` (empty slot) — use `config.podcast(n)` rather than indexing `config.podcasts` directly.
+- `albums`: 0–12 entries, mapped to knob positions in list order, `null` = empty slot. Optional — empty means auto-discover folders under `music_dir`.
+- `web_port`: web editor port (default 8080, `0` disables).
 - `debug_mode`: enables DEBUG log lines. Read once and cached by `utils._get_debug_mode()`.
 
-Defaults live in `config.py:DEFAULTS`. Validation rejects >12 podcasts/albums and missing `name`/`rss_url`/`folder` fields.
+Defaults live in `config.py:DEFAULTS`. Validation (`config.validate`, shared with the web editor) rejects >12 podcasts/albums, no non-null podcast, and missing `name`/`rss_url`/`folder` fields.
 
 ## Conventions
 

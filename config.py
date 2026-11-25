@@ -13,38 +13,64 @@ DEFAULTS = {
     "rss_timeout": 10,
     "music_dir": str(Path.home() / "music"),
     "albums": [],
+    "web_port": 8080,  # web config editor; 0 disables it
 }
+
+MAX_SLOTS = 12
+
+
+def validate(data: dict):
+    """Raise ValueError if podcasts/albums are invalid.
+
+    Slots may be null (empty knob position) so that slot N always maps to
+    knob position N.
+    """
+    podcasts = data.get("podcasts") or []
+    if not any(podcasts):
+        raise ValueError("Config must include at least one podcast")
+    if len(podcasts) > MAX_SLOTS:
+        raise ValueError(f"Maximum {MAX_SLOTS} podcasts supported")
+    for i, p in enumerate(podcasts, 1):
+        if p is None:
+            continue
+        if not p.get("name") or not p.get("rss_url"):
+            raise ValueError(f"Podcast {i} missing 'name' or 'rss_url'")
+
+    albums = data.get("albums") or []
+    if len(albums) > MAX_SLOTS:
+        raise ValueError(f"Maximum {MAX_SLOTS} albums supported")
+    for i, a in enumerate(albums, 1):
+        if a is None:
+            continue
+        if not a.get("folder"):
+            raise ValueError(f"Album {i} missing 'folder'")
 
 
 class Config:
     """Load and validate configuration from JSON file."""
 
     def __init__(self, config_file: str = "config.json"):
-        path = Path(config_file)
-        if not path.exists():
-            raise FileNotFoundError(f"Config not found: {path}")
+        self.path = Path(config_file)
+        self._data = self._load()
 
-        with open(path) as f:
-            self._data = {**DEFAULTS, **json.load(f)}
+    def _load(self) -> dict:
+        if not self.path.exists():
+            raise FileNotFoundError(f"Config not found: {self.path}")
+        with open(self.path) as f:
+            data = {**DEFAULTS, **json.load(f)}
+        validate(data)
+        return data
 
-        self._validate()
+    def reload(self):
+        """Re-read the config file. On error the old config is kept and the error raised."""
+        self._data = self._load()
 
-    def _validate(self):
-        if "podcasts" not in self._data or not self._data["podcasts"]:
-            raise ValueError("Config must include non-empty 'podcasts' list")
-        if len(self._data["podcasts"]) > 12:
-            raise ValueError("Maximum 12 podcasts supported")
-        for i, p in enumerate(self._data["podcasts"], 1):
-            if "name" not in p or "rss_url" not in p:
-                raise ValueError(f"Podcast {i} missing 'name' or 'rss_url'")
-
-        # Validate albums (optional)
-        albums = self._data.get("albums", [])
-        if len(albums) > 12:
-            raise ValueError("Maximum 12 albums supported")
-        for i, a in enumerate(albums, 1):
-            if "folder" not in a:
-                raise ValueError(f"Album {i} missing 'folder'")
+    def podcast(self, index: int):
+        """Podcast entry for knob position 1-12, or None if the slot is empty."""
+        podcasts = self._data["podcasts"]
+        if 1 <= index <= len(podcasts):
+            return podcasts[index - 1]
+        return None
 
     @property
     def podcasts(self):
@@ -85,3 +111,7 @@ class Config:
     @property
     def albums(self):
         return self._data["albums"]
+
+    @property
+    def web_port(self):
+        return self._data["web_port"]

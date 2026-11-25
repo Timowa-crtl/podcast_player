@@ -3,6 +3,8 @@ podcast.log
 state.json
 episodes/
 nohup.out
+config.json.bak
+config.json.tmp
 
 # Python
 __pycache__/

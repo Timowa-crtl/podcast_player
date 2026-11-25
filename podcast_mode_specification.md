@@ -42,12 +42,27 @@ The Raspberry Pi Podcast Player supports up to 12 podcast feeds mapped to the 12
 - `download_timeout`: seconds before download times out. **Default**: `30`
 - `rss_timeout`: seconds before RSS fetch times out. **Default**: `10`
 - `debug_mode`: enable verbose DEBUG-level logging. **Default**: `false`
+- `web_port`: port of the web config editor (see below). `0` disables it. **Default**: `8080`
 
 ### Validation
 
-- `podcasts` must be present and non-empty
+- `podcasts` must contain at least one non-null entry
 - Maximum 12 podcasts
-- Each podcast must have `name` and `rss_url`
+- Each non-null podcast must have `name` and `rss_url`
+- An entry may be `null`: an **empty slot**. Slot N is always knob position N, so a gap does not shift later podcasts.
+
+### Web config editor (`web_config.py`)
+
+- Started by the player as a background thread on `web_port`, bound to all interfaces, no authentication (LAN only). Reach it at `http://<hostname>.local:8080` (mDNS via avahi) or the Pi's IP.
+- One page, no JavaScript: 12 fixed podcast rows (name + feed URL), `music_dir`, 12 fixed album rows (folder dropdown of `music_dir` subfolders + optional display name).
+- Edits only `podcasts`, `albums` and `music_dir`; all other keys are preserved. Blank rows are saved as `null`, trailing blanks are dropped. All albums blank → `albums: []` (auto-discovery).
+- Validation is structural only (required fields, URL starts with `http://`/`https://`, ≥1 podcast); feeds are not fetched on save.
+- Writes atomically (temp file + rename) and keeps the previous file as `config.json.bak`.
+- After a save the main loop reloads the config (never the web thread):
+  - Renamed podcasts take effect immediately.
+  - A slot whose `rss_url` changed or was emptied loses its episodes, files and feed cache; if it was playing, playback stops. An RSS check then runs (deferred as usual if something else is playing), and if the knob is on that slot in Podcast mode it is re-selected.
+  - Albums and `music_dir` need no reload: they are re-read on every knob turn.
+- `python3 web_config.py` runs the editor standalone, without the player.
 
 ---
 
@@ -130,6 +145,7 @@ After updating episodes for a podcast, any files in that podcast's directory tha
 
 ### Error handling
 
+- Empty slot (`null` or beyond the list) → stop, LED off, display shows "Empty slot"
 - No episodes downloaded yet → log warning, stay silent, LED off
 - Episode file missing from disk → log error, stay silent, LED off
 - RSS fetch timeout or parse error → log warning/error, skip that feed
@@ -257,5 +273,6 @@ Markers: `▶️` = current episode, `✅` = completed, blank = not yet played.
 | `hardware.py`        | GPIO rotary switch and mode switch reading             |
 | `led_controller.py`  | Red/green LED patterns for status feedback             |
 | `status.py`          | CLI status display tool                                |
+| `web_config.py`      | Web editor for feeds, music folder and albums          |
 | `main.py`            | Entry point, signal handling, startup/shutdown         |
 | `utils.py`           | Logging, formatting helpers                            |

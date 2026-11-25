@@ -104,6 +104,12 @@ class StateManager:
             return podcast["episodes"][episode_index].get("duration", 0.0)
         return 0.0
 
+    def reset_podcast(self, podcast_id: str):
+        """Forget episodes and feed cache for a slot (e.g. its feed URL changed)."""
+        self.state["podcasts"].pop(podcast_id, None)
+        self.state["feed_cache"].pop(podcast_id, None)
+        self.save(force=True)
+
     def set_last_check(self, timestamp: float):
         """Update last RSS check timestamp."""
         self.state["last_check"] = timestamp
